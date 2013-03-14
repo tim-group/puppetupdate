@@ -16,7 +16,7 @@ clients to test.
 Neat eh?
 
 This code works, but needs some cleanup to take values from the config
-file (e.g. repository location currently hard coded at git@git:puppet).
+file (e.g. repository location currently hard coded at http://git/git/puppet).
 
 Patches are very welcome!
 
