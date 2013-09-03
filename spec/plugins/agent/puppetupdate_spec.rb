@@ -13,18 +13,15 @@ require 'mcollective/ddl'
 require 'test/unit'
 require 'yaml'
 require 'tmpdir'
-require 'test/unit'
+require 'spec_helper'
 
 describe 'files/agent/puppetupdate.rb' do
 
   before do
     @spec_file_dir  = File.dirname __FILE__
-    @file_under_test_dir = "#{@spec_file_dir}/../../../files"
 
-    require "#{@file_under_test_dir}/mcollective/agent/puppetupdate"
-
-    MCollective::Config.instance.set_config_defaults("/etc/mcollective/server.cfg")
-    MCollective::Config.instance.libdir << @file_under_test_dir
+    agent_file = File.join([File.dirname(__FILE__), "../../../agent/puppetupdate.rb"])
+    @agent = MCollective::Test::LocalAgentTest.new("puppetupdate", :agent_file => agent_file).plugin
 
     @gitrepo = Dir.mktmpdir
 
@@ -54,46 +51,43 @@ describe 'files/agent/puppetupdate.rb' do
   it 'clones bare repo' do
     Dir.mktmpdir {|dir|
       # Checkout
-      a = MCollective::Agent::Puppetupdate.new()
-      a.dir = dir
-      a.repo_url="#{@gitrepo}"
-      a.update_bare_repo()
+      @agent.dir = dir
+      @agent.repo_url="#{@gitrepo}"
+      @agent.update_bare_repo()
       # Assert it's there
       File.directory?("#{dir}/puppet.git").should be true
 
       # Checkout a second time to make sure we update right
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      lambda { puppetupdater.update_bare_repo() }.should_not raise_error
+      @agent = MCollective::Agent::Puppetupdate.new()
+      @agent.dir = dir
+      lambda { @agent.update_bare_repo() }.should_not raise_error
     }
   end
 
   it 'finds branches' do
     Dir.mktmpdir {|dir|
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      puppetupdater.repo_url="#{@gitrepo}"
+      @agent.dir = dir
+      @agent.repo_url="#{@gitrepo}"
       # Checkout
-      puppetupdater.update_bare_repo()
+      @agent.update_bare_repo()
       # Assert it's there
       File.directory?("#{dir}/puppet.git").should be true
 
-      branches = puppetupdater.branches()
+      branches = @agent.branches()
       branches.size.should be > 1
     }
   end
 
   it 'local branch name munging' do
     Dir.mktmpdir {|dir|
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      puppetupdater.repo_url="#{@gitrepo}"
-      puppetupdater.local_branch_name('/foobar').should be == 'foobar'
-      puppetupdater.local_branch_name('* foobar').should be == 'foobar'
-      puppetupdater.local_branch_name('* notmaster').should be == 'notmaster'
-      puppetupdater.local_branch_name('* masterless').should be == 'masterless'
-      puppetupdater.local_branch_name('* foomasterbar').should be == 'foomasterbar'
-      puppetupdater.local_branch_name('* master').should be == 'masterbranch'
+      @agent.dir = dir
+      @agent.repo_url="#{@gitrepo}"
+      @agent.local_branch_name('/foobar').should be == 'foobar'
+      @agent.local_branch_name('* foobar').should be == 'foobar'
+      @agent.local_branch_name('* notmaster').should be == 'notmaster'
+      @agent.local_branch_name('* masterless').should be == 'masterless'
+      @agent.local_branch_name('* foomasterbar').should be == 'foomasterbar'
+      @agent.local_branch_name('* master').should be == 'masterbranch'
     }
   end
 
@@ -101,12 +95,12 @@ describe 'files/agent/puppetupdate.rb' do
     Dir.mktmpdir {|dir|
      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        puppetupdater.update_all_branches()
-        puppetupdater.update_master_checkout()
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
+        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent.dir = "#{dir}/myrepo"
+        @agent.repo_url="#{@gitrepo}"
+        @agent.update_all_branches()
+        @agent.update_master_checkout()
+        Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           master_rev = `git rev-list master --max-count=1`.chomp
           head_rev = `git rev-parse HEAD`.chomp
           master_rev.should be == head_rev
@@ -121,15 +115,15 @@ describe 'files/agent/puppetupdate.rb' do
     Dir.mktmpdir {|dir|
      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
+        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent.dir = "#{dir}/myrepo"
+        @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        `mkdir -p #{puppetupdater.dir}/environments/default`
-        File.exist?("#{puppetupdater.dir}/environments/default").should eql true
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        File.exist?("#{puppetupdater.dir}/environments/default").should eql true
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
+        `mkdir -p #{@agent.dir}/environments/default`
+        File.exist?("#{@agent.dir}/environments/default").should eql true
+        @agent.update_all_branches({"* master"=>previous_rev})
+        File.exist?("#{@agent.dir}/environments/default").should eql true
+        Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           head_rev = `git rev-parse HEAD`.chomp
           head_rev.should be == previous_rev
           head_rev.size.should be == 40
@@ -144,15 +138,15 @@ describe 'files/agent/puppetupdate.rb' do
     Dir.mktmpdir {|dir|
      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
+        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent.dir = "#{dir}/myrepo"
+        @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        `mkdir -p #{puppetupdater.dir}/environments/hahah`
-        File.exist?("#{puppetupdater.dir}/environments/hahah").should eql true
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        File.exist?("#{puppetupdater.dir}/environments/hahah").should eql false
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
+        `mkdir -p #{@agent.dir}/environments/hahah`
+        File.exist?("#{@agent.dir}/environments/hahah").should eql true
+        @agent.update_all_branches({"* master"=>previous_rev})
+        File.exist?("#{@agent.dir}/environments/hahah").should eql false
+        Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           head_rev = `git rev-parse HEAD`.chomp
           head_rev.should be == previous_rev
           head_rev.size.should be == 40
@@ -167,12 +161,12 @@ describe 'files/agent/puppetupdate.rb' do
     Dir.mktmpdir {|dir|
      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
+        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent.dir = "#{dir}/myrepo"
+        @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
+        @agent.update_all_branches({"* master"=>previous_rev})
+        Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           head_rev = `git rev-parse HEAD`.chomp
           head_rev.should be == previous_rev
           head_rev.size.should be == 40
@@ -182,27 +176,27 @@ describe 'files/agent/puppetupdate.rb' do
    }
   end
 
-  def initial_checkout(puppetupdater,previous_rev)
-    puppetupdater.update_all_branches({"* master"=>previous_rev})
+  def initial_checkout(agent,previous_rev)
+    agent.update_all_branches({"* master"=>previous_rev})
   end
 
-  def checkout_again(puppetupdater,previous_rev)
-    puppetupdater.update_all_branches({"* master"=>previous_rev})
+  def checkout_again(agent,previous_rev)
+    agent.update_all_branches({"* master"=>previous_rev})
   end
 
   it 'checks out an arbitrary Git hash from an existing repo' do
     Dir.mktmpdir {|dir|
      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
+        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent.dir = "#{dir}/myrepo"
+        @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
 
-        initial_checkout(puppetupdater,previous_rev)
-        checkout_again(puppetupdater,previous_rev)
+        initial_checkout(@agent,previous_rev)
+        checkout_again(@agent,previous_rev)
 
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
+        Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           head_rev = `git rev-parse HEAD`.chomp
           head_rev.should be == previous_rev
           head_rev.size.should be == 40

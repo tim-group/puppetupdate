@@ -8,9 +8,9 @@ module MCollective
 
       def initialize
         @debug=true
-        @dir="/etc/puppet"
+        @dir=Config.instance.pluginconf['puppetupdate.directory'] || '/etc/puppet'
         @git_repo="puppet.git"
-        @repo_url="http://git/git/puppet"
+        @repo_url=Config.instance.pluginconf['puppetupdate.repository'] || 'http://git/git/puppet'
         super
       end
 
