@@ -9,9 +9,12 @@ module MCollective
       def initialize
         @debug=true
         @dir=Config.instance.pluginconf['puppetupdate.directory'] || '/etc/puppet'
-        @git_repo="puppet.git"
         @repo_url=Config.instance.pluginconf['puppetupdate.repository'] || 'http://git/git/puppet'
         super
+      end
+
+      def git_repo
+        Config.instance.pluginconf['puppetupdate.clone_at'] || "#{@dir}/puppet.git"
       end
 
       action "update" do
@@ -53,8 +56,7 @@ module MCollective
       def update_master_checkout
         Dir.chdir(@dir) do
           debug "chdir #{@dir} for update_master_checkout"
-          exec "git fetch origin"
-          exec "git reset --hard origin/master"
+          exec "git --git-dir=#{git_repo} --work-tree=#{@dir} reset --hard master"
         end
       end
 
@@ -103,7 +105,7 @@ module MCollective
 
       def branches()
         branches=[]
-        Dir.chdir("#{@dir}/#{@git_repo}") do
+        Dir.chdir(git_repo) do
           %x[git branch -a].each_line do |line|
             line.strip!
             if line !~ /\//
@@ -125,17 +127,17 @@ module MCollective
         return branches
       end
 
-      def update_branch(remote_branch_name, revision="origin/#{remote_branch_name(remote_branch_name)}")
+      def update_branch(remote_branch_name, revision="#{remote_branch_name(remote_branch_name)}")
         local_branch_name = local_branch_name(remote_branch_name)
         dir="#{@dir}/environments/#{local_branch_name}/"
+        Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
         if !File.exist?(dir)
-          exec  "git clone -b #{remote_branch_name(remote_branch_name)} '#{@dir}/#{@git_repo}' #{dir}"
+          Dir.mkdir(dir)
         end
 
         Dir.chdir(dir) do
-          debug "chdir #{dir}\n"
-          exec "git fetch origin"
-          exec "git reset --hard #{revision}"
+          debug "chdir #{dir}\ngit reset --hard #{revision} --git-dir=#{git_repo} --work-tree=#{dir}\n"
+          exec "git --git-dir=#{git_repo} --work-tree=#{dir} reset --hard #{revision}"
         end
       end
 
@@ -157,15 +159,15 @@ module MCollective
       end
 
       def update_bare_repo()
-        envDir="#{@dir}/#{@git_repo}"
+        envDir="#{git_repo}"
         if File.exists?(envDir)
-          Dir.chdir("#{@dir}/#{@git_repo}") do
-            debug "chdir #{@dir}/#{@git_repo}"
+          Dir.chdir(git_repo) do
+            debug "chdir #{git_repo}"
             exec("git fetch origin")
             exec("git remote prune origin")
           end
         else
-          exec "git clone --mirror #{@repo_url} #{@dir}/#{@git_repo}"
+          exec "git clone --mirror #{@repo_url} #{git_repo}"
         end
         debug "done update_bare_repo"
       end
