@@ -3,25 +3,6 @@ require 'fileutils'
 module MCollective
   module Agent
     class Puppetupdate < RPC::Agent
-      attr_accessor :dir, :repo_url
-
-      def initialize
-        @debug    = true
-        @dir      = config('directory') || '/etc/puppet'
-        @repo_url = config('repository') || 'http://git/git/puppet'
-        super
-      end
-
-      def git_repo
-        config('clone_at') || "#{@dir}/puppet.git"
-      end
-
-      def load_puppet
-        require 'puppet'
-      rescue LoadError => e
-        reply.fail! "Cannot load Puppet"
-      end
-
       action "update" do
         load_puppet
 
@@ -47,6 +28,25 @@ module MCollective
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
+      end
+
+      attr_accessor :dir, :repo_url
+
+      def initialize
+        @debug    = true
+        @dir      = config('directory') || '/etc/puppet'
+        @repo_url = config('repository') || 'http://git/git/puppet'
+        super
+      end
+
+      def git_repo
+        config('clone_at') || "#{@dir}/puppet.git"
+      end
+
+      def load_puppet
+        require 'puppet'
+      rescue LoadError => e
+        reply.fail! "Cannot load Puppet"
       end
 
       def branches
