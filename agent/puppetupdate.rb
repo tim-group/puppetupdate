@@ -58,7 +58,6 @@ module MCollective
 
       def update_all_branches(revisions={})
         update_bare_repo
-        branches = branches
         branches.each do |branch|
           debug "WORKING FOR BRANCH #{branch}"
           debug "#{revisions[branch]}"
