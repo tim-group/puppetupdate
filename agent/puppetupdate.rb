@@ -39,9 +39,8 @@ module MCollective
         super
       end
 
-      def git_dir
-        config('clone_at') || "#{@dir}/puppet.git"
-      end
+      def git_dir; @git_dir ||= config('clone_at') || "#{@dir}/puppet.git"; end
+      def env_dir; @env_dir ||= "#{@dir}/environments"; end
 
       def load_puppet
         require 'puppet'
@@ -55,7 +54,7 @@ module MCollective
       end
 
       def all_env_branches
-        %x[ls -1 #{@dir}/environments].lines.map(&:strip)
+        %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
       def update_master_checkout
@@ -82,7 +81,7 @@ module MCollective
           next if local_branches.include?(branch)
 
           debug "Cleanup old branch named #{branch}"
-          exec "rm -rf #{@dir}/environments/#{branch}"
+          exec "rm -rf #{env_dir}/#{branch}"
         end
       end
 
@@ -100,9 +99,9 @@ module MCollective
       def update_branch(branch, revision=nil)
         revision          ||= "#{remote_branch_name(branch)}"
         local_branch_name   = local_branch_name(branch)
-        branch_dir          = "#{@dir}/environments/#{local_branch_name}/"
+        branch_dir          = "#{env_dir}/#{local_branch_name}/"
 
-        Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
+        Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
 
         Dir.chdir(branch_dir) do
