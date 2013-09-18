@@ -72,13 +72,12 @@ module MCollective
           debug "#{revisions[branch]}"
           update_branch(branch, revisions[branch])
         end
-        write_puppet_conf(branches)
-        cleanup_old_branches(branches)
+        write_puppet_conf
+        cleanup_old_branches
       end
 
-      def cleanup_old_branches(branches)
-        local_branches = ["default"]
-        branches.each { |branch| local_branches << local_branch_name(branch) }
+      def cleanup_old_branches
+        local_branches = ["default", *branches.map{|b| local_branch_name(b)}]
         all_env_branches.each do |branch|
           next if local_branches.include?(branch)
 
@@ -87,10 +86,9 @@ module MCollective
         end
       end
 
-      def write_puppet_conf(branches)
-        branches << "default"
+      def write_puppet_conf
         FileUtils.cp "#{@dir}/puppet.conf.base", "#{@dir}/puppet.conf"
-        branches.each do |branch|
+        ["default", *branches].each do |branch|
           open("#{@dir}/puppet.conf", "a") do |f|
             f.puts "\n[#{local_branch_name(branch)}]\n"
             f.puts "modulepath=$confdir/environments/#{local_branch_name(branch)}/modules\n"
