@@ -5,6 +5,7 @@ metadata :name        => "Puppet Update",
          :version     => "1.0",
          :url         => "http://www.timgroup.com",
          :timeout     => 120
+
 action "update_default", :description => "Update the default branch to a specific hash" do
   display :always
 
@@ -14,13 +15,14 @@ action "update_default", :description => "Update the default branch to a specifi
     :optional    => true,
     :type        => :string,
     :prompt      => "Git hash",
-    :validation  => ".+", 
+    :validation  => ".+",
     :maxlength   => 40
 
   output :status,
     :description => "The status of the git pull",
     :display_as  => "Pull Status"
 end
+
 action "update", :description => "Update all branches on the puppetmaster" do
   display :always
 
