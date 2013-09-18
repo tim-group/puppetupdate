@@ -8,7 +8,7 @@ module MCollective
 
         begin
           update_all_branches
-          update_master_checkout
+          git_reset "master"
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -57,11 +57,6 @@ module MCollective
         @env_branches ||= %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
-      def update_master_checkout
-        debug "chdir #{@dir} for update_master_checkout"
-        exec "git --git-dir=#{git_dir} --work-tree=#{@dir} reset --hard master"
-      end
-
       def update_all_branches(revisions={})
         update_bare_repo
         git_branches.each do |branch|
@@ -77,8 +72,6 @@ module MCollective
         local_branches = ["default", *git_branches.map{|b| local_branch_name(b)}]
         env_branches.each do |branch|
           next if local_branches.include?(branch)
-
-          debug "Cleanup old branch named #{branch}"
           exec "rm -rf #{env_dir}/#{branch}"
         end
       end
@@ -104,8 +97,11 @@ module MCollective
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
 
-        debug "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}\n"
-        exec "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}"
+        git_reset revision, branch_dir
+      end
+
+      def git_reset(revision, work_tree=@dir)
+        exec "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
       end
 
       def remote_branch_name(branch)

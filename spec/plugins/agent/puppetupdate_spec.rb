@@ -92,8 +92,8 @@ describe 'files/agent/puppetupdate.rb' do
         @agent = MCollective::Agent::Puppetupdate.new
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
-        @agent.update_all_branches()
-        @agent.update_master_checkout()
+        @agent.update_all_branches
+        @agent.git_reset "master"
         Dir.chdir("#{@agent.dir}/environments/masterbranch") do
           master_rev = `git rev-list master --max-count=1`.chomp
           head_rev = `git rev-parse HEAD`.chomp
