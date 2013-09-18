@@ -73,7 +73,7 @@ module MCollective
         branches.each { |branch| local_branches << local_branch_name(branch) }
         all_envs = all_env_branches()
         all_envs.each { |branch|
-          if ! local_branches.include?(branch)
+          unless local_branches.include?(branch)
             debug "Cleanup old branch named #{branch}"
             exec "rm -rf #{@dir}/environments/#{branch}"
           end
@@ -123,7 +123,7 @@ module MCollective
         branch_dir          = "#{@dir}/environments/#{local_branch_name}/"
 
         Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
-        Dir.mkdir(branch_dir) if !File.exist?(branch_dir)
+        Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
 
         Dir.chdir(branch_dir) do
           debug "git --git-dir=#{git_repo} --work-tree=#{branch_dir} reset --hard #{revision}\n"
@@ -163,17 +163,13 @@ module MCollective
       end
 
       def debug(line)
-        if true == @debug
-          logger.info(line)
-        end
+        logger.info(line) if @debug == true
       end
 
       def exec(cmd)
         debug "Running cmd #{cmd}"
         output=`#{cmd} 2>&1`
-        if not $?.success?
-          raise "#{cmd} failed with: #{output}"
-        end
+        raise "#{cmd} failed with: #{output}" unless $?.success?
       end
 
     private
