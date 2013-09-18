@@ -23,7 +23,7 @@ module MCollective
         begin
           revision = request[:revision]
           update_bare_repo
-          update_branch("default",revision)
+          update_branch("default", revision)
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -69,9 +69,8 @@ module MCollective
       end
 
       def cleanup_old_branches
-        local_branches = ["default", *git_branches.map{|b| local_branch_name(b)}]
-        env_branches.each do |branch|
-          next if local_branches.include?(branch)
+        keep = ["default", *git_branches.map{|b| local_branch_name(b)}]
+        (env_branches - keep).each do |branch|
           exec "rm -rf #{env_dir}/#{branch}"
         end
       end
@@ -90,9 +89,8 @@ module MCollective
       end
 
       def update_branch(branch, revision=nil)
-        revision          ||= "#{remote_branch_name(branch)}"
-        local_branch_name   = local_branch_name(branch)
-        branch_dir          = "#{env_dir}/#{local_branch_name}/"
+        revision   ||= "#{remote_branch_name(branch)}"
+        branch_dir   = "#{env_dir}/#{local_branch_name(branch)}/"
 
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
