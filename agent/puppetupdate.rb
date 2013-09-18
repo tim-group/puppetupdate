@@ -2,19 +2,18 @@ require 'fileutils'
 
 module MCollective
   module Agent
-    class Puppetupdate<RPC::Agent
-      attr_accessor :dir
-      attr_accessor :repo_url
+    class Puppetupdate < RPC::Agent
+      attr_accessor :dir, :repo_url
 
       def initialize
-        @debug=true
-        @dir=Config.instance.pluginconf['puppetupdate.directory'] || '/etc/puppet'
-        @repo_url=Config.instance.pluginconf['puppetupdate.repository'] || 'http://git/git/puppet'
+        @debug    = true
+        @dir      = config('directory') || '/etc/puppet'
+        @repo_url = config('repository') || 'http://git/git/puppet'
         super
       end
 
       def git_repo
-        Config.instance.pluginconf['puppetupdate.clone_at'] || "#{@dir}/puppet.git"
+        config('clone_at') || "#{@dir}/puppet.git"
       end
 
       action "update" do
@@ -63,16 +62,10 @@ module MCollective
       def update_all_branches(revisions={})
         update_bare_repo()
         branches = branches()
-        branches.each {
-          |branch|
-
+        branches.each { |branch|
           debug "WORKING FOR BRANCH #{branch}"
           debug "#{revisions[branch]}"
-          if(revisions[branch]==nil)
-            update_branch(branch)
-          else
-            update_branch(branch, revisions[branch])
-          end
+          update_branch(branch, revisions[branch])
         }
         write_puppet_conf(branches)
         cleanup_old_branches(branches)
@@ -127,17 +120,17 @@ module MCollective
         return branches
       end
 
-      def update_branch(remote_branch_name, revision="#{remote_branch_name(remote_branch_name)}")
-        local_branch_name = local_branch_name(remote_branch_name)
-        dir="#{@dir}/environments/#{local_branch_name}/"
-        Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
-        if !File.exist?(dir)
-          Dir.mkdir(dir)
-        end
+      def update_branch(remote_branch_name, revision=nil)
+        revision          ||= "#{remote_branch_name(remote_branch_name)}"
+        local_branch_name   = local_branch_name(remote_branch_name)
+        branch_dir          = "#{@dir}/environments/#{local_branch_name}/"
 
-        Dir.chdir(dir) do
-          debug "chdir #{dir}\ngit reset --hard #{revision} --git-dir=#{git_repo} --work-tree=#{dir}\n"
-          exec "git --git-dir=#{git_repo} --work-tree=#{dir} reset --hard #{revision}"
+        Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
+        Dir.mkdir(branch_dir) if !File.exist?(branch_dir)
+
+        Dir.chdir(branch_dir) do
+          debug "git --git-dir=#{git_repo} --work-tree=#{branch_dir} reset --hard #{revision}\n"
+          exec "git --git-dir=#{git_repo} --work-tree=#{branch_dir} reset --hard #{revision}"
         end
       end
 
@@ -184,6 +177,12 @@ module MCollective
         if not $?.success?
           raise "#{cmd} failed with: #{output}"
         end
+      end
+
+    private
+
+      def config key
+        Config.instance.pluginconf["puppetupdate.#{key}"]
       end
     end
   end
