@@ -50,27 +50,12 @@ module MCollective
       end
 
       def branches
-        branches=[]
-        Dir.chdir(git_repo) do
-          %x[git branch -a].each_line do |line|
-            line.strip!
-            if line !~ /\//
-              branches<<line
-            end
-          end
-        end
-        branches
+        %x[cd #{git_repo} && git branch -a].
+          lines.reject{|l| l =~ /\//}.map(&:strip)
       end
 
       def all_env_branches
-        branches=[]
-        Dir.chdir("#{@dir}/environments") do
-          %x[ls -1].each_line do |line|
-            line.strip!
-            branches<<line
-          end
-        end
-        branches
+        %x[ls -1 #{@dir}/environments].lines.map(&:strip)
       end
 
       def update_master_checkout
