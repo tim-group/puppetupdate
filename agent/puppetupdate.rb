@@ -58,10 +58,8 @@ module MCollective
       end
 
       def update_master_checkout
-        Dir.chdir(@dir) do
-          debug "chdir #{@dir} for update_master_checkout"
-          exec "git --git-dir=#{git_dir} --work-tree=#{@dir} reset --hard master"
-        end
+        debug "chdir #{@dir} for update_master_checkout"
+        exec "git --git-dir=#{git_dir} --work-tree=#{@dir} reset --hard master"
       end
 
       def update_all_branches(revisions={})
@@ -106,10 +104,8 @@ module MCollective
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
 
-        Dir.chdir(branch_dir) do
-          debug "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}\n"
-          exec "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}"
-        end
+        debug "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}\n"
+        exec "git --git-dir=#{git_dir} --work-tree=#{branch_dir} reset --hard #{revision}"
       end
 
       def remote_branch_name(branch)
