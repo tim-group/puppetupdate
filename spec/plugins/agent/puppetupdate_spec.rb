@@ -23,27 +23,23 @@ describe 'files/agent/puppetupdate.rb' do
     @agent = MCollective::Test::LocalAgentTest.new("puppetupdate", :agent_file => agent_file).plugin
 
     @gitrepo = Dir.mktmpdir
-
-    Dir.chdir(@gitrepo) do
-      `git init --bare`
-    end
-
-    Dir.mktmpdir do |dir|
-      Dir.chdir(dir) do
-        `git clone #{@gitrepo} myrepo 2>&1 >/dev/null`
-        Dir.chdir("myrepo") do
-          `echo 'helllo' > file1`
-          `git add file1`
-          `git commit -am "my first commit"`
-          `echo 'hello2' > puppet.conf.base`
-          `git add puppet.conf.base`
-          `git commit -am "add puppet.conf.base file"`
-          `git push origin master 2>&1 >/dev/null`
-          `git checkout -b branch1 2>&1 >/dev/null`
-          `git push origin branch1 2>&1 >/dev/null`
-        end
-      end
-    end
+    tmp_dir = Dir.mktmpdir
+    system <<-SHELL
+      ( cd #{@gitrepo}
+        git init --bare
+        cd #{tmp_dir}
+        git clone #{@gitrepo} myrepo 2>&1
+        cd myrepo
+        echo 'helllo' > file1
+        git add file1
+        git commit -am "my first commit"
+        echo 'hello2' > puppet.conf.base
+        git add puppet.conf.base
+        git commit -am "add puppet.conf.base file"
+        git push origin master 2>&1
+        git checkout -b branch1 2>&1
+        git push origin branch1 2>&1 ) >/dev/null
+    SHELL
   end
 
   it 'clones bare repo' do
