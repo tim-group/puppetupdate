@@ -97,9 +97,9 @@ module MCollective
         end
       end
 
-      def update_branch(remote_branch_name, revision=nil)
-        revision          ||= "#{remote_branch_name(remote_branch_name)}"
-        local_branch_name   = local_branch_name(remote_branch_name)
+      def update_branch(branch, revision=nil)
+        revision          ||= "#{remote_branch_name(branch)}"
+        local_branch_name   = local_branch_name(branch)
         branch_dir          = "#{@dir}/environments/#{local_branch_name}/"
 
         Dir.mkdir("#{@dir}/environments") unless File.exist?("#{@dir}/environments")
