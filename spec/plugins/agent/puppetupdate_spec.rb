@@ -76,12 +76,11 @@ describe 'files/agent/puppetupdate.rb' do
     Dir.mktmpdir do |dir|
       @agent.dir = dir
       @agent.repo_url="#{@gitrepo}"
-      @agent.local_branch_name('/foobar').should be == 'foobar'
-      @agent.local_branch_name('* foobar').should be == 'foobar'
-      @agent.local_branch_name('* notmaster').should be == 'notmaster'
-      @agent.local_branch_name('* masterless').should be == 'masterless'
-      @agent.local_branch_name('* foomasterbar').should be == 'foomasterbar'
-      @agent.local_branch_name('* master').should be == 'masterbranch'
+      @agent.branch_dir('foobar').should be == 'foobar'
+      @agent.branch_dir('master').should be == 'masterbranch'
+      @agent.branch_dir('user').should be == 'userbranch'
+      @agent.branch_dir('agent').should be == 'agentbranch'
+      @agent.branch_dir('main').should be == 'mainbranch'
     end
   end
 
@@ -114,7 +113,7 @@ describe 'files/agent/puppetupdate.rb' do
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
         `mkdir -p #{@agent.dir}/environments/default`
         File.exist?("#{@agent.dir}/environments/default").should eql true
-        @agent.update_all_branches({"* master"=>previous_rev})
+        @agent.update_all_branches({"master"=>previous_rev})
         File.exist?("#{@agent.dir}/environments/default").should eql true
         File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
         File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
@@ -133,7 +132,7 @@ describe 'files/agent/puppetupdate.rb' do
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
         `mkdir -p #{@agent.dir}/environments/hahah`
         File.exist?("#{@agent.dir}/environments/hahah").should eql true
-        @agent.update_all_branches({"* master"=>previous_rev})
+        @agent.update_all_branches({"master"=>previous_rev})
         File.exist?("#{@agent.dir}/environments/hahah").should eql false
         File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
         File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
@@ -150,7 +149,7 @@ describe 'files/agent/puppetupdate.rb' do
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        @agent.update_all_branches({"* master"=>previous_rev})
+        @agent.update_all_branches({"master"=>previous_rev})
         File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
         File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
       end
@@ -158,11 +157,11 @@ describe 'files/agent/puppetupdate.rb' do
   end
 
   def initial_checkout(agent,previous_rev)
-    agent.update_all_branches({"* master"=>previous_rev})
+    agent.update_all_branches({"master"=>previous_rev})
   end
 
   def checkout_again(agent,previous_rev)
-    agent.update_all_branches({"* master"=>previous_rev})
+    agent.update_all_branches({"master"=>previous_rev})
   end
 
   it 'checks out an arbitrary Git hash from an existing repo' do

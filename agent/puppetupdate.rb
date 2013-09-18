@@ -49,8 +49,9 @@ module MCollective
       end
 
       def git_branches
-        @git_branches ||= %x[cd #{git_dir} && git branch -a].
-          lines.reject{|l| l =~ /\//}.map(&:strip)
+        @git_branches ||= %x[cd #{git_dir} && git branch -a].lines.
+          reject {|l| l =~ /\//}.
+          map {|l| l.gsub(/\*/, '').strip}
       end
 
       def env_branches
@@ -69,7 +70,7 @@ module MCollective
       end
 
       def cleanup_old_branches
-        keep = ["default", *git_branches.map{|b| local_branch_name(b)}]
+        keep = ["default", *git_branches.map{|b| branch_dir(b)}]
         (env_branches - keep).each do |branch|
           exec "rm -rf #{env_dir}/#{branch}"
         end
@@ -80,7 +81,7 @@ module MCollective
           f.puts File.read("#{@dir}/puppet.conf.base")
 
           git_branches.each do |branch|
-            local = local_branch_name(branch)
+            local = branch_dir(branch)
             f.puts "[#{local}]"
             f.puts "modulepath=$confdir/environments/#{local}/modules"
             f.puts "manifest=$confdir/environments/#{local}/manifests/site.pp"
@@ -90,7 +91,7 @@ module MCollective
 
       def update_branch(branch, revision=nil)
         revision   ||= "#{remote_branch_name(branch)}"
-        branch_dir   = "#{env_dir}/#{local_branch_name(branch)}/"
+        branch_dir   = "#{env_dir}/#{branch_dir(branch)}/"
 
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
@@ -106,12 +107,8 @@ module MCollective
         /\* (.+)/.match(branch) ? $1 : branch
       end
 
-      def local_branch_name(branch)
-        if /(\/|\* )(.+)/.match(branch)
-          branch = $2
-        end
-
-        branch == 'master' ? "masterbranch" : branch
+      def branch_dir(branch)
+        %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
       end
 
       def update_bare_repo
