@@ -16,12 +16,14 @@ module MCollective
         config('clone_at') || "#{@dir}/puppet.git"
       end
 
+      def load_puppet
+        require 'puppet'
+      rescue LoadError => e
+        reply.fail! "Cannot load Puppet"
+      end
+
       action "update" do
-        begin
-          require 'puppet'
-        rescue LoadError => e
-          reply.fail! "Cannot load Puppet"
-        end
+        load_puppet
 
         begin
           update_all_branches()
@@ -35,12 +37,7 @@ module MCollective
       action "update_default" do
         validate :revision, String
         validate :revision, :shellsafe
-
-        begin
-          require 'puppet'
-        rescue LoadError => e
-          reply.fail! "Cannot load Puppet"
-        end
+        load_puppet
 
         begin
           revision = request[:revision]
