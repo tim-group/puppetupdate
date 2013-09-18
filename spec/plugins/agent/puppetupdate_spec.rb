@@ -26,12 +26,12 @@ describe 'files/agent/puppetupdate.rb' do
     @gitrepo = Dir.mktmpdir
 
     Dir.chdir(@gitrepo) do
-     `git init --bare`
+      `git init --bare`
     end
 
     Dir.mktmpdir {|dir|
       Dir.chdir(dir) {
-        `git clone #{@gitrepo} myrepo`
+        `git clone #{@gitrepo} myrepo 2>&1 >/dev/null`
         Dir.chdir("myrepo") {
           `echo 'helllo' > file1`
           `git add file1`
@@ -39,13 +39,12 @@ describe 'files/agent/puppetupdate.rb' do
           `echo 'hello2' > puppet.conf.base`
           `git add puppet.conf.base`
           `git commit -am "add puppet.conf.base file"`
-          `git push origin master`
-          `git checkout -b branch1`
-          `git push origin branch1`
+          `git push origin master 2>&1 >/dev/null`
+          `git checkout -b branch1 2>&1 >/dev/null`
+          `git push origin branch1 2>&1 >/dev/null`
         }
       }
-  }
-
+    }
   end
 
   it 'clones bare repo' do
@@ -93,9 +92,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   it 'checks out the HEAD by default' do
     Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
+      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent = MCollective::Agent::Puppetupdate.new
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
         @agent.update_all_branches()
@@ -113,9 +112,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   it 'does not cleanup default branch at end' do
     Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
+      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent = MCollective::Agent::Puppetupdate.new
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
@@ -133,9 +132,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   it 'cleans up old branches' do
     Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
+      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent = MCollective::Agent::Puppetupdate.new
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
@@ -153,9 +152,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   it 'checks out an arbitrary Git hash from a fresh repo' do
     Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
+      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
-        @agent = MCollective::Agent::Puppetupdate.new()
+        @agent = MCollective::Agent::Puppetupdate.new
         @agent.dir = "#{dir}/myrepo"
         @agent.repo_url="#{@gitrepo}"
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
@@ -177,7 +176,7 @@ describe 'files/agent/puppetupdate.rb' do
 
   it 'checks out an arbitrary Git hash from an existing repo' do
     Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
+      `git clone #{@gitrepo} #{dir}/myrepo`
       Dir.chdir("#{dir}/myrepo") {
         @agent = MCollective::Agent::Puppetupdate.new()
         @agent.dir = "#{dir}/myrepo"
@@ -186,12 +185,9 @@ describe 'files/agent/puppetupdate.rb' do
 
         initial_checkout(@agent,previous_rev)
         checkout_again(@agent,previous_rev)
-
         File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
         File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
       }
-
    }
   end
-
 end

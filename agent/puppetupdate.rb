@@ -126,12 +126,7 @@ module MCollective
 
       def update_bare_repo
         clone_bare_repo and return unless File.exists?(git_dir)
-
-        exec <<-SHELL
-          cd #{git_dir} &&
-          git fetch origin &&
-          git remote prune origin
-        SHELL
+        exec "(cd #{git_dir}; git fetch origin; git remote prune origin)"
       end
 
       def clone_bare_repo
