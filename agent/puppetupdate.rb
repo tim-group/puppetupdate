@@ -26,8 +26,8 @@ module MCollective
         load_puppet
 
         begin
-          update_all_branches()
-          update_master_checkout()
+          update_all_branches
+          update_master_checkout
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -41,7 +41,7 @@ module MCollective
 
         begin
           revision = request[:revision]
-          update_bare_repo()
+          update_bare_repo
           update_branch("default",revision)
           reply[:output] = "Done"
         rescue Exception => e
@@ -57,8 +57,8 @@ module MCollective
       end
 
       def update_all_branches(revisions={})
-        update_bare_repo()
-        branches = branches()
+        update_bare_repo
+        branches = branches
         branches.each { |branch|
           debug "WORKING FOR BRANCH #{branch}"
           debug "#{revisions[branch]}"
@@ -93,7 +93,7 @@ module MCollective
         }
       end
 
-      def branches()
+      def branches
         branches=[]
         Dir.chdir(git_repo) do
           %x[git branch -a].each_line do |line|
@@ -106,7 +106,7 @@ module MCollective
         return branches
       end
 
-      def all_env_branches()
+      def all_env_branches
         branches=[]
         Dir.chdir("#{@dir}/environments") do
           %x[ls -1].each_line do |line|
@@ -148,7 +148,7 @@ module MCollective
         return remote_branch_name
       end
 
-      def update_bare_repo()
+      def update_bare_repo
         envDir="#{git_repo}"
         if File.exists?(envDir)
           Dir.chdir(git_repo) do
@@ -162,13 +162,13 @@ module MCollective
         debug "done update_bare_repo"
       end
 
-      def debug line
+      def debug(line)
         if true == @debug
           logger.info(line)
         end
       end
 
-      def exec cmd
+      def exec(cmd)
         debug "Running cmd #{cmd}"
         output=`#{cmd} 2>&1`
         if not $?.success?
@@ -178,7 +178,7 @@ module MCollective
 
     private
 
-      def config key
+      def config(key)
         Config.instance.pluginconf["puppetupdate.#{key}"]
       end
     end
