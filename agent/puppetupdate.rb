@@ -49,48 +49,6 @@ module MCollective
         end
       end
 
-      def update_master_checkout
-        Dir.chdir(@dir) do
-          debug "chdir #{@dir} for update_master_checkout"
-          exec "git --git-dir=#{git_repo} --work-tree=#{@dir} reset --hard master"
-        end
-      end
-
-      def update_all_branches(revisions={})
-        update_bare_repo
-        branches.each do |branch|
-          debug "WORKING FOR BRANCH #{branch}"
-          debug "#{revisions[branch]}"
-          update_branch(branch, revisions[branch])
-        end
-        write_puppet_conf(branches)
-        cleanup_old_branches(branches)
-      end
-
-      def cleanup_old_branches(branches)
-        local_branches = ["default"]
-        branches.each { |branch| local_branches << local_branch_name(branch) }
-        all_envs = all_env_branches()
-        all_envs.each do |branch|
-          next if local_branches.include?(branch)
-
-          debug "Cleanup old branch named #{branch}"
-          exec "rm -rf #{@dir}/environments/#{branch}"
-        end
-      end
-
-      def write_puppet_conf(branches)
-        branches << "default"
-        FileUtils.cp "#{@dir}/puppet.conf.base", "#{@dir}/puppet.conf"
-        branches.each do |branch|
-          open("#{@dir}/puppet.conf", "a") do |f|
-            f.puts "\n[#{local_branch_name(branch)}]\n"
-            f.puts "modulepath=$confdir/environments/#{local_branch_name(branch)}/modules\n"
-            f.puts "manifest=$confdir/environments/#{local_branch_name(branch)}/manifests/site.pp\n"
-          end
-        end
-      end
-
       def branches
         branches=[]
         Dir.chdir(git_repo) do
@@ -113,6 +71,47 @@ module MCollective
           end
         end
         branches
+      end
+
+      def update_master_checkout
+        Dir.chdir(@dir) do
+          debug "chdir #{@dir} for update_master_checkout"
+          exec "git --git-dir=#{git_repo} --work-tree=#{@dir} reset --hard master"
+        end
+      end
+
+      def update_all_branches(revisions={})
+        update_bare_repo
+        branches.each do |branch|
+          debug "WORKING FOR BRANCH #{branch}"
+          debug "#{revisions[branch]}"
+          update_branch(branch, revisions[branch])
+        end
+        write_puppet_conf(branches)
+        cleanup_old_branches(branches)
+      end
+
+      def cleanup_old_branches(branches)
+        local_branches = ["default"]
+        branches.each { |branch| local_branches << local_branch_name(branch) }
+        all_env_branches.each do |branch|
+          next if local_branches.include?(branch)
+
+          debug "Cleanup old branch named #{branch}"
+          exec "rm -rf #{@dir}/environments/#{branch}"
+        end
+      end
+
+      def write_puppet_conf(branches)
+        branches << "default"
+        FileUtils.cp "#{@dir}/puppet.conf.base", "#{@dir}/puppet.conf"
+        branches.each do |branch|
+          open("#{@dir}/puppet.conf", "a") do |f|
+            f.puts "\n[#{local_branch_name(branch)}]\n"
+            f.puts "modulepath=$confdir/environments/#{local_branch_name(branch)}/modules\n"
+            f.puts "manifest=$confdir/environments/#{local_branch_name(branch)}/manifests/site.pp\n"
+          end
+        end
       end
 
       def update_branch(remote_branch_name, revision=nil)
@@ -173,4 +172,3 @@ module MCollective
     end
   end
 end
-
