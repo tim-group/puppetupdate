@@ -111,16 +111,16 @@ module MCollective
         end
       end
 
-      def remote_branch_name(remote_branch_name)
-        /\* (.+)/.match(remote_branch_name) ? $1 : remote_branch_name
+      def remote_branch_name(branch)
+        /\* (.+)/.match(branch) ? $1 : branch
       end
 
-      def local_branch_name(remote_branch_name)
-        if /(\/|\* )(.+)/.match(remote_branch_name)
-          remote_branch_name = $2
+      def local_branch_name(branch)
+        if /(\/|\* )(.+)/.match(branch)
+          branch = $2
         end
 
-        remote_branch_name == 'master' ? "masterbranch" : remote_branch_name
+        branch == 'master' ? "masterbranch" : branch
       end
 
       def update_bare_repo
