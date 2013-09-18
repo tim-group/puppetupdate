@@ -48,13 +48,13 @@ module MCollective
         reply.fail! "Cannot load Puppet"
       end
 
-      def branches
-        %x[cd #{git_dir} && git branch -a].
+      def git_branches
+        @git_branches ||= %x[cd #{git_dir} && git branch -a].
           lines.reject{|l| l =~ /\//}.map(&:strip)
       end
 
-      def all_env_branches
-        %x[ls -1 #{env_dir}].lines.map(&:strip)
+      def env_branches
+        @env_branches ||= %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
       def update_master_checkout
@@ -66,7 +66,7 @@ module MCollective
 
       def update_all_branches(revisions={})
         update_bare_repo
-        branches.each do |branch|
+        git_branches.each do |branch|
           debug "WORKING FOR BRANCH #{branch}"
           debug "#{revisions[branch]}"
           update_branch(branch, revisions[branch])
@@ -76,8 +76,8 @@ module MCollective
       end
 
       def cleanup_old_branches
-        local_branches = ["default", *branches.map{|b| local_branch_name(b)}]
-        all_env_branches.each do |branch|
+        local_branches = ["default", *git_branches.map{|b| local_branch_name(b)}]
+        env_branches.each do |branch|
           next if local_branches.include?(branch)
 
           debug "Cleanup old branch named #{branch}"
@@ -86,12 +86,14 @@ module MCollective
       end
 
       def write_puppet_conf
-        FileUtils.cp "#{@dir}/puppet.conf.base", "#{@dir}/puppet.conf"
-        ["default", *branches].each do |branch|
-          open("#{@dir}/puppet.conf", "a") do |f|
-            f.puts "\n[#{local_branch_name(branch)}]\n"
-            f.puts "modulepath=$confdir/environments/#{local_branch_name(branch)}/modules\n"
-            f.puts "manifest=$confdir/environments/#{local_branch_name(branch)}/manifests/site.pp\n"
+        File.open("#{@dir}/puppet.conf", "w") do |f|
+          f.puts File.read("#{@dir}/puppet.conf.base")
+
+          git_branches.each do |branch|
+            local = local_branch_name(branch)
+            f.puts "[#{local}]"
+            f.puts "modulepath=$confdir/environments/#{local}/modules"
+            f.puts "manifest=$confdir/environments/#{local}/manifests/site.pp"
           end
         end
       end
@@ -123,17 +125,17 @@ module MCollective
       end
 
       def update_bare_repo
-        envDir="#{git_dir}"
-        if File.exists?(envDir)
-          Dir.chdir(git_dir) do
-            debug "chdir #{git_dir}"
-            exec("git fetch origin")
-            exec("git remote prune origin")
-          end
-        else
-          exec "git clone --mirror #{@repo_url} #{git_dir}"
-        end
-        debug "done update_bare_repo"
+        clone_bare_repo and return unless File.exists?(git_dir)
+
+        exec <<-SHELL
+          cd #{git_dir} &&
+          git fetch origin &&
+          git remote prune origin
+        SHELL
+      end
+
+      def clone_bare_repo
+        exec "git clone --mirror #{@repo_url} #{git_dir}"
       end
 
       def debug(line)

@@ -73,7 +73,7 @@ describe 'files/agent/puppetupdate.rb' do
       # Assert it's there
       File.directory?("#{dir}/puppet.git").should be true
 
-      branches = @agent.branches()
+      branches = @agent.git_branches
       branches.size.should be > 1
     }
   end
