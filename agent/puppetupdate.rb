@@ -126,6 +126,8 @@ module MCollective
 
       def config(key)
         Config.instance.pluginconf["puppetupdate.#{key}"]
+      rescue
+        nil
       end
     end
   end

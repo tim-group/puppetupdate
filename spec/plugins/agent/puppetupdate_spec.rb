@@ -16,9 +16,8 @@ require 'tmpdir'
 require 'spec_helper'
 
 describe 'files/agent/puppetupdate.rb' do
-  let(:dir) { Dir.mktmpdir }
-
-  before do
+  before(:all) do
+    dir = Dir.mktmpdir
     @gitrepo = Dir.mktmpdir
     tmp_dir = Dir.mktmpdir
     system <<-SHELL
@@ -56,6 +55,10 @@ describe 'files/agent/puppetupdate.rb' do
   end
 
   context "without repo" do
+    before(:all) do
+      `rm -rf #{@agent.dir}`
+    end
+
     it 'clones bare repo' do
       @agent.update_bare_repo
       File.directory?(@agent.git_dir).should be true
@@ -64,10 +67,10 @@ describe 'files/agent/puppetupdate.rb' do
   end
 
   context "with repo" do
-    before do
-      `git clone #{@gitrepo} #{dir}`
-      `git clone --mirror #{@gitrepo} #{dir}/puppet.git`
-      @agent.dir = dir
+    before(:all) do
+      `rm -rf #{@agent.dir}`
+      `git clone #{@gitrepo} #{@agent.dir}`
+      `git clone --mirror #{@gitrepo} #{@agent.dir}/puppet.git`
       @agent.update_all_branches
     end
 
@@ -87,7 +90,7 @@ describe 'files/agent/puppetupdate.rb' do
     end
 
     it 'checks out an arbitrary Git hash from a fresh repo' do
-      previous_rev = `cd #{dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
+      previous_rev = `cd #{@agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
       @agent.update_branch("master", previous_rev)
       File.exist?("#{@agent.env_dir}/masterbranch/file1").should be == true
       File.exist?("#{@agent.env_dir}/masterbranch/puppet.conf.base").should be == false
