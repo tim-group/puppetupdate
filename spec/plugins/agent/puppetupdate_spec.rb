@@ -17,6 +17,11 @@ require 'spec_helper'
 require 'agent/puppetupdate.rb'
 
 describe MCollective::Agent::Puppetupdate do
+  let(:agent) {
+    MCollective::Test::LocalAgentTest.new("puppetupdate",
+      :agent_file => "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb").
+    plugin }
+
   before(:all) do
     repo_dir = Dir.mktmpdir
     system <<-SHELL
@@ -35,15 +40,14 @@ describe MCollective::Agent::Puppetupdate do
         git push origin branch1 2>&1 ) >/dev/null
     SHELL
 
-    agent_file = "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb"
-    @agent = MCollective::Test::LocalAgentTest.new(
-      "puppetupdate", :agent_file => agent_file).plugin
+    agent.dir      = Dir.mktmpdir
+    agent.repo_url = repo_dir
 
-    @agent.dir      = Dir.mktmpdir
-    @agent.repo_url = repo_dir
+    clean
+    clone_main
+    clone_bare
+    agent.update_all_branches
   end
-
-  let(:agent) { @agent }
 
   it "#git_dir should depend on config" do
     MCollective::Config.instance.pluginconf["puppetupdate.clone_at"] = "hello"
@@ -52,11 +56,11 @@ describe MCollective::Agent::Puppetupdate do
   end
 
   it "#branch_dir is not using reserved branch" do
-    agent.branch_dir('foobar').should be == 'foobar'
-    agent.branch_dir('master').should be == 'masterbranch'
-    agent.branch_dir('user').should be   == 'userbranch'
-    agent.branch_dir('agent').should be  == 'agentbranch'
-    agent.branch_dir('main').should be   == 'mainbranch'
+    agent.branch_dir('foobar').should == 'foobar'
+    agent.branch_dir('master').should == 'masterbranch'
+    agent.branch_dir('user').should   == 'userbranch'
+    agent.branch_dir('agent').should  == 'agentbranch'
+    agent.branch_dir('main').should   == 'mainbranch'
   end
 
   describe "#update_bare_repo" do
@@ -76,35 +80,18 @@ describe MCollective::Agent::Puppetupdate do
     end
   end
 
-  context "with repo" do
-    before(:all) do
-      clean
-      clone_main
-      clone_bare
-      agent.update_all_branches
-    end
+  it '#cleanup_old_branches removes branches no longer in repo' do
+    `mkdir -p #{agent.env_dir}/hahah`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/hahah").should == false
+    File.exist?("#{agent.env_dir}/masterbranch").should == true
+  end
 
-    it 'checks out the HEAD by default' do
-      agent.git_reset "master"
-      master_rev = `cd #{agent.env_dir}/masterbranch; git rev-list master --max-count=1`.chomp
-      head_rev   = `cd #{agent.env_dir}/masterbranch; git rev-parse HEAD`.chomp
-      master_rev.should be == head_rev
-      master_rev.size.should be == 40
-    end
-
-    it 'cleans up old branches' do
-      `mkdir -p #{agent.env_dir}/hahah`
-      agent.cleanup_old_branches
-      File.exist?("#{agent.env_dir}/hahah").should eql false
-      File.exist?("#{agent.env_dir}/masterbranch").should be == true
-    end
-
-    it 'checks out an arbitrary Git hash from a fresh repo' do
-      previous_rev = `cd #{agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
-      agent.update_branch("master", previous_rev)
-      File.exist?("#{agent.env_dir}/masterbranch/file1").should be == true
-      File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should be == false
-    end
+  it 'checks out an arbitrary Git hash from a fresh repo' do
+    previous_rev = `cd #{agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
+    agent.update_branch("master", previous_rev)
+    File.exist?("#{agent.env_dir}/masterbranch/file1").should == true
+    File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should == false
   end
 
   def clean
