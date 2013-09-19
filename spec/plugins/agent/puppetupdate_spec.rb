@@ -19,16 +19,13 @@ describe 'files/agent/puppetupdate.rb' do
   let(:dir) { Dir.mktmpdir }
 
   before do
-    @spec_file_dir = File.dirname __FILE__
-
     @gitrepo = Dir.mktmpdir
     tmp_dir = Dir.mktmpdir
     system <<-SHELL
       ( cd #{@gitrepo}
         git init --bare
         cd #{tmp_dir}
-        git clone #{@gitrepo} myrepo 2>&1
-        cd myrepo
+        git clone #{@gitrepo} . 2>&1
         echo 'helllo' > file1
         git add file1
         git commit -am "my first commit"
@@ -67,8 +64,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   context "with repo" do
     before do
-      `git clone #{@gitrepo} #{dir}/myrepo`
-      @agent.dir = "#{dir}/myrepo"
+      `git clone #{@gitrepo} #{dir}`
+      `git clone --mirror #{@gitrepo} #{dir}/puppet.git`
+      @agent.dir = dir
     end
 
     it 'checks out the HEAD by default' do
@@ -89,9 +87,8 @@ describe 'files/agent/puppetupdate.rb' do
       File.exist?("#{@agent.dir}/environments/masterbranch").should be == true
     end
 
-
     it 'checks out an arbitrary Git hash from a fresh repo' do
-      Dir.chdir("#{dir}/myrepo") do
+      Dir.chdir("#{dir}/puppet.git") do
         previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
         @agent.update_bare_repo
         @agent.update_branch("master", previous_rev)
