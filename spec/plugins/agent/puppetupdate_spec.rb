@@ -67,10 +67,10 @@ describe 'files/agent/puppetupdate.rb' do
       `git clone #{@gitrepo} #{dir}`
       `git clone --mirror #{@gitrepo} #{dir}/puppet.git`
       @agent.dir = dir
+      @agent.update_all_branches
     end
 
     it 'checks out the HEAD by default' do
-      @agent.update_all_branches
       @agent.git_reset "master"
       Dir.chdir("#{@agent.dir}/environments/masterbranch") do
         master_rev = `git rev-list master --max-count=1`.chomp
@@ -82,19 +82,16 @@ describe 'files/agent/puppetupdate.rb' do
 
     it 'cleans up old branches' do
       `mkdir -p #{@agent.dir}/environments/hahah`
-      @agent.update_all_branches
+      @agent.cleanup_old_branches
       File.exist?("#{@agent.dir}/environments/hahah").should eql false
       File.exist?("#{@agent.dir}/environments/masterbranch").should be == true
     end
 
     it 'checks out an arbitrary Git hash from a fresh repo' do
-      Dir.chdir("#{dir}/puppet.git") do
-        previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        @agent.update_bare_repo
-        @agent.update_branch("master", previous_rev)
-        File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
-        File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
-      end
+      previous_rev = `cd #{dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
+      @agent.update_branch("master", previous_rev)
+      File.exist?("#{@agent.dir}/environments/masterbranch/file1").should be == true
+      File.exist?("#{@agent.dir}/environments/masterbranch/puppet.conf.base").should be == false
     end
   end
 end

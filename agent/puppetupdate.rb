@@ -58,7 +58,7 @@ module MCollective
       end
 
       def env_branches
-        @env_branches ||= %x[ls -1 #{env_dir}].lines.map(&:strip)
+        %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
       def update_all_branches
