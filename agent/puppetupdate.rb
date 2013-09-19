@@ -42,8 +42,8 @@ module MCollective
         super
       end
 
-      def git_dir; @git_dir ||= config('clone_at') || "#{@dir}/puppet.git"; end
-      def env_dir; @env_dir ||= "#{@dir}/environments"; end
+      def git_dir; config('clone_at') || "#{@dir}/puppet.git"; end
+      def env_dir; "#{@dir}/environments"; end
 
       def load_puppet
         require 'puppet'

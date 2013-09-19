@@ -14,8 +14,9 @@ require 'test/unit'
 require 'yaml'
 require 'tmpdir'
 require 'spec_helper'
+require 'agent/puppetupdate.rb'
 
-describe 'files/agent/puppetupdate.rb' do
+describe MCollective::Agent::Puppetupdate do
   before(:all) do
     repo_dir = Dir.mktmpdir
     system <<-SHELL
@@ -44,20 +45,31 @@ describe 'files/agent/puppetupdate.rb' do
 
   let(:agent) { @agent }
 
-  describe "#branch_dir" do
-    it "is not using reserved branch" do
-      agent.branch_dir('foobar').should be == 'foobar'
-      agent.branch_dir('master').should be == 'masterbranch'
-      agent.branch_dir('user').should be   == 'userbranch'
-      agent.branch_dir('agent').should be  == 'agentbranch'
-      agent.branch_dir('main').should be   == 'mainbranch'
-    end
+  it "#git_dir should depend on config" do
+    MCollective::Config.instance.pluginconf["puppetupdate.clone_at"] = "hello"
+    agent.git_dir.should == "hello"
+    MCollective::Config.instance.pluginconf["puppetupdate.clone_at"] = nil
   end
 
-  context "without repo" do
-    before(:all) { `rm -rf #{agent.dir}` }
+  it "#branch_dir is not using reserved branch" do
+    agent.branch_dir('foobar').should be == 'foobar'
+    agent.branch_dir('master').should be == 'masterbranch'
+    agent.branch_dir('user').should be   == 'userbranch'
+    agent.branch_dir('agent').should be  == 'agentbranch'
+    agent.branch_dir('main').should be   == 'mainbranch'
+  end
 
-    it 'clones bare repo' do
+  describe "#update_bare_repo" do
+    before { clean && clone_main }
+
+    it "clones fresh repository" do
+      agent.update_bare_repo
+      File.directory?(agent.git_dir).should be true
+      agent.git_branches.size.should be > 1
+    end
+
+    it "fetches repository when present" do
+      clone_bare
       agent.update_bare_repo
       File.directory?(agent.git_dir).should be true
       agent.git_branches.size.should be > 1
@@ -66,9 +78,9 @@ describe 'files/agent/puppetupdate.rb' do
 
   context "with repo" do
     before(:all) do
-      `rm -rf #{agent.dir}`
-      `git clone #{agent.repo_url} #{agent.dir}`
-      `git clone --mirror #{agent.repo_url} #{agent.dir}/puppet.git`
+      clean
+      clone_main
+      clone_bare
       agent.update_all_branches
     end
 
@@ -93,5 +105,17 @@ describe 'files/agent/puppetupdate.rb' do
       File.exist?("#{agent.env_dir}/masterbranch/file1").should be == true
       File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should be == false
     end
+  end
+
+  def clean
+    `rm -rf #{agent.dir}`
+  end
+
+  def clone_main
+    `git clone #{agent.repo_url} #{agent.dir}`
+  end
+
+  def clone_bare
+    `git clone --mirror #{agent.repo_url} #{agent.git_dir}`
   end
 end
