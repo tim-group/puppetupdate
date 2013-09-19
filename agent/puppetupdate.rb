@@ -90,21 +90,15 @@ module MCollective
       end
 
       def update_branch(branch, revision=nil)
-        revision   ||= "#{remote_branch_name(branch)}"
-        branch_dir   = "#{env_dir}/#{branch_dir(branch)}/"
-
+        branch_path = "#{env_dir}/#{branch_dir(branch)}/"
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
-        Dir.mkdir(branch_dir) unless File.exist?(branch_dir)
+        Dir.mkdir(branch_path) unless File.exist?(branch_path)
 
-        git_reset revision, branch_dir
+        git_reset(revision || branch, branch_path)
       end
 
       def git_reset(revision, work_tree=@dir)
         exec "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
-      end
-
-      def remote_branch_name(branch)
-        /\* (.+)/.match(branch) ? $1 : branch
       end
 
       def branch_dir(branch)
@@ -112,12 +106,11 @@ module MCollective
       end
 
       def update_bare_repo
-        clone_bare_repo and return unless File.exists?(git_dir)
-        exec "(cd #{git_dir}; git fetch origin; git remote prune origin)"
-      end
-
-      def clone_bare_repo
-        exec "git clone --mirror #{@repo_url} #{git_dir}"
+        if File.exists?(git_dir)
+          exec "(cd #{git_dir}; git fetch origin; git remote prune origin)"
+        else
+          exec "git clone --mirror #{@repo_url} #{git_dir}"
+        end
       end
 
       def debug(line)
