@@ -17,14 +17,12 @@ require 'spec_helper'
 
 describe 'files/agent/puppetupdate.rb' do
   before(:all) do
-    dir = Dir.mktmpdir
-    @gitrepo = Dir.mktmpdir
-    tmp_dir = Dir.mktmpdir
+    repo_dir = Dir.mktmpdir
     system <<-SHELL
-      ( cd #{@gitrepo}
+      ( cd #{repo_dir}
         git init --bare
-        cd #{tmp_dir}
-        git clone #{@gitrepo} . 2>&1
+        cd #{Dir.mktmpdir}
+        git clone #{repo_dir} . 2>&1
         echo 'helllo' > file1
         git add file1
         git commit -am "my first commit"
@@ -40,8 +38,8 @@ describe 'files/agent/puppetupdate.rb' do
     @agent = MCollective::Test::LocalAgentTest.new(
       "puppetupdate", :agent_file => agent_file).plugin
 
-    @agent.dir      = dir
-    @agent.repo_url = @gitrepo
+    @agent.dir      = Dir.mktmpdir
+    @agent.repo_url = repo_dir
   end
 
   describe "#branches" do
@@ -69,8 +67,8 @@ describe 'files/agent/puppetupdate.rb' do
   context "with repo" do
     before(:all) do
       `rm -rf #{@agent.dir}`
-      `git clone #{@gitrepo} #{@agent.dir}`
-      `git clone --mirror #{@gitrepo} #{@agent.dir}/puppet.git`
+      `git clone #{@agent.repo_url} #{@agent.dir}`
+      `git clone --mirror #{@agent.repo_url} #{@agent.dir}/puppet.git`
       @agent.update_all_branches
     end
 
