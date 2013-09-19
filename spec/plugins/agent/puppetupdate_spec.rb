@@ -40,7 +40,8 @@ describe 'files/agent/puppetupdate.rb' do
     agent_file = "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb"
     @agent = MCollective::Test::LocalAgentTest.new(
       "puppetupdate", :agent_file => agent_file).plugin
-    @agent.dir = dir
+
+    @agent.dir      = dir
     @agent.repo_url = @gitrepo
   end
 
@@ -57,7 +58,7 @@ describe 'files/agent/puppetupdate.rb' do
   context "without repo" do
     it 'clones bare repo' do
       @agent.update_bare_repo
-      File.directory?("#{dir}/puppet.git").should be true
+      File.directory?(@agent.git_dir).should be true
       @agent.git_branches.size.should be > 1
     end
   end
@@ -79,7 +80,7 @@ describe 'files/agent/puppetupdate.rb' do
     end
 
     it 'cleans up old branches' do
-      `mkdir -p #{@agent.dir}/environments/hahah`
+      `mkdir -p #{@agent.env_dir}/hahah`
       @agent.cleanup_old_branches
       File.exist?("#{@agent.env_dir}/hahah").should eql false
       File.exist?("#{@agent.env_dir}/masterbranch").should be == true
