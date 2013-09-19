@@ -3,7 +3,7 @@ require 'fileutils'
 module MCollective
   module Agent
     class Puppetupdate < RPC::Agent
-      action "update" do
+      action "update_all" do
         load_puppet
 
         begin
@@ -15,15 +15,18 @@ module MCollective
         end
       end
 
-      action "update_default" do
+      action "update" do
         validate :revision, String
         validate :revision, :shellsafe
+        validate :branch, String
+        validate :branch, :shellsafe
         load_puppet
 
         begin
+          branch   = request[:branch]
           revision = request[:revision]
           update_bare_repo
-          update_branch("default", revision)
+          update_branch(branch, revision)
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -58,19 +61,15 @@ module MCollective
         @env_branches ||= %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
-      def update_all_branches(revisions={})
+      def update_all_branches
         update_bare_repo
-        git_branches.each do |branch|
-          debug "WORKING FOR BRANCH #{branch}"
-          debug "#{revisions[branch]}"
-          update_branch(branch, revisions[branch])
-        end
+        git_branches.each {|branch| update_branch(branch) }
         write_puppet_conf
         cleanup_old_branches
       end
 
       def cleanup_old_branches
-        keep = ["default", *git_branches.map{|b| branch_dir(b)}]
+        keep = git_branches.map{|b| branch_dir(b)}
         (env_branches - keep).each do |branch|
           exec "rm -rf #{env_dir}/#{branch}"
         end
