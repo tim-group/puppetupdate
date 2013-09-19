@@ -72,12 +72,10 @@ describe 'files/agent/puppetupdate.rb' do
 
     it 'checks out the HEAD by default' do
       @agent.git_reset "master"
-      Dir.chdir("#{@agent.dir}/environments/masterbranch") do
-        master_rev = `git rev-list master --max-count=1`.chomp
-        head_rev   = `git rev-parse HEAD`.chomp
-        master_rev.should be == head_rev
-        master_rev.size.should be == 40
-      end
+      master_rev = `cd #{@agent.dir}/environments/masterbranch; git rev-list master --max-count=1`.chomp
+      head_rev   = `cd #{@agent.dir}/environments/masterbranch; git rev-parse HEAD`.chomp
+      master_rev.should be == head_rev
+      master_rev.size.should be == 40
     end
 
     it 'cleans up old branches' do
