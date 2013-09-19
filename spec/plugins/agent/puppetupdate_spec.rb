@@ -42,56 +42,56 @@ describe 'files/agent/puppetupdate.rb' do
     @agent.repo_url = repo_dir
   end
 
-  describe "#branches" do
+  let(:agent) { @agent }
+
+  describe "#branch_dir" do
     it "is not using reserved branch" do
-      @agent.branch_dir('foobar').should be == 'foobar'
-      @agent.branch_dir('master').should be == 'masterbranch'
-      @agent.branch_dir('user').should be   == 'userbranch'
-      @agent.branch_dir('agent').should be  == 'agentbranch'
-      @agent.branch_dir('main').should be   == 'mainbranch'
+      agent.branch_dir('foobar').should be == 'foobar'
+      agent.branch_dir('master').should be == 'masterbranch'
+      agent.branch_dir('user').should be   == 'userbranch'
+      agent.branch_dir('agent').should be  == 'agentbranch'
+      agent.branch_dir('main').should be   == 'mainbranch'
     end
   end
 
   context "without repo" do
-    before(:all) do
-      `rm -rf #{@agent.dir}`
-    end
+    before(:all) { `rm -rf #{agent.dir}` }
 
     it 'clones bare repo' do
-      @agent.update_bare_repo
-      File.directory?(@agent.git_dir).should be true
-      @agent.git_branches.size.should be > 1
+      agent.update_bare_repo
+      File.directory?(agent.git_dir).should be true
+      agent.git_branches.size.should be > 1
     end
   end
 
   context "with repo" do
     before(:all) do
-      `rm -rf #{@agent.dir}`
-      `git clone #{@agent.repo_url} #{@agent.dir}`
-      `git clone --mirror #{@agent.repo_url} #{@agent.dir}/puppet.git`
-      @agent.update_all_branches
+      `rm -rf #{agent.dir}`
+      `git clone #{agent.repo_url} #{agent.dir}`
+      `git clone --mirror #{agent.repo_url} #{agent.dir}/puppet.git`
+      agent.update_all_branches
     end
 
     it 'checks out the HEAD by default' do
-      @agent.git_reset "master"
-      master_rev = `cd #{@agent.env_dir}/masterbranch; git rev-list master --max-count=1`.chomp
-      head_rev   = `cd #{@agent.env_dir}/masterbranch; git rev-parse HEAD`.chomp
+      agent.git_reset "master"
+      master_rev = `cd #{agent.env_dir}/masterbranch; git rev-list master --max-count=1`.chomp
+      head_rev   = `cd #{agent.env_dir}/masterbranch; git rev-parse HEAD`.chomp
       master_rev.should be == head_rev
       master_rev.size.should be == 40
     end
 
     it 'cleans up old branches' do
-      `mkdir -p #{@agent.env_dir}/hahah`
-      @agent.cleanup_old_branches
-      File.exist?("#{@agent.env_dir}/hahah").should eql false
-      File.exist?("#{@agent.env_dir}/masterbranch").should be == true
+      `mkdir -p #{agent.env_dir}/hahah`
+      agent.cleanup_old_branches
+      File.exist?("#{agent.env_dir}/hahah").should eql false
+      File.exist?("#{agent.env_dir}/masterbranch").should be == true
     end
 
     it 'checks out an arbitrary Git hash from a fresh repo' do
-      previous_rev = `cd #{@agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
-      @agent.update_branch("master", previous_rev)
-      File.exist?("#{@agent.env_dir}/masterbranch/file1").should be == true
-      File.exist?("#{@agent.env_dir}/masterbranch/puppet.conf.base").should be == false
+      previous_rev = `cd #{agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
+      agent.update_branch("master", previous_rev)
+      File.exist?("#{agent.env_dir}/masterbranch/file1").should be == true
+      File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should be == false
     end
   end
 end
