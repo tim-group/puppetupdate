@@ -8,6 +8,8 @@ module MCollective
 
         begin
           update_all_branches
+          write_puppet_conf request[:write_conf]
+          cleanup_old_branches request[:cleanup]
           git_reset "master"
           reply[:output] = "Done"
         rescue Exception => e
@@ -25,8 +27,11 @@ module MCollective
         begin
           branch   = request[:branch]
           revision = request[:revision]
+
           update_bare_repo
           update_branch(branch, revision)
+          write_puppet_conf request[:write_conf]
+          cleanup_old_branches request[:cleanup]
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -64,18 +69,20 @@ module MCollective
       def update_all_branches
         update_bare_repo
         git_branches.each {|branch| update_branch(branch) }
-        write_puppet_conf
-        cleanup_old_branches
       end
 
-      def cleanup_old_branches
+      def cleanup_old_branches(config=nil)
+        return if config && config !~ /yes|1|true/
+
         keep = git_branches.map{|b| branch_dir(b)}
         (env_branches - keep).each do |branch|
           exec "rm -rf #{env_dir}/#{branch}"
         end
       end
 
-      def write_puppet_conf
+      def write_puppet_conf(config=nil)
+        return if config && config !~ /yes|1|true/
+
         File.open("#{@dir}/puppet.conf", "w") do |f|
           f.puts File.read("#{@dir}/puppet.conf.base")
 

@@ -26,6 +26,22 @@ action "update", :description => "Update the branch to a specific revision" do
     :prompt      => "Git branch",
     :validation  => ".+"
 
+  input :write_conf,
+    :description => "write puppet.conf",
+    :display_as  => "write puppet.conf after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Write config (yes/no)",
+    :validation  => ".+"
+
+  input :cleanup,
+    :description => "cleanup old branches",
+    :display_as  => "cleanup old branches after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Cleanup (yes/no)",
+    :validation  => ".+"
+
   output :status,
     :description => "The status of the git pull",
     :display_as  => "Pull Status"
@@ -33,6 +49,22 @@ end
 
 action "update_all", :description => "Update all branches on the puppetmaster" do
   display :always
+
+  input :write_conf,
+    :description => "write puppet.conf",
+    :display_as  => "write puppet.conf after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Write config (yes/no)",
+    :validation  => ".+"
+
+  input :cleanup,
+    :description => "cleanup old branches",
+    :display_as  => "cleanup old branches after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Cleanup (yes/no)",
+    :validation  => ".+"
 
   output :status,
     :description => "The status of the git pull",

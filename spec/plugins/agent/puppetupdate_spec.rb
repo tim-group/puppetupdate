@@ -94,6 +94,47 @@ describe MCollective::Agent::Puppetupdate do
     File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should == false
   end
 
+  describe '#write_puppet_conf' do
+    it 'writes config by default' do
+      File.expects(:open)
+      agent.write_puppet_conf
+    end
+
+    it 'writes config with yes/1/true' do
+      %w{yes 1 true}.each do |value|
+        File.expects(:open)
+        agent.write_puppet_conf(value)
+      end
+    end
+
+    it 'does not write config otherwise' do
+      File.expects(:open).never
+      agent.write_puppet_conf('no')
+    end
+  end
+
+  describe '#cleanup_old_branches' do
+    it 'cleans up by default' do
+      agent.expects(:exec)
+      `mkdir -p #{agent.env_dir}/hahah`
+      agent.cleanup_old_branches
+    end
+
+    it 'cleans up with yes/1/true' do
+      %w{yes 1 true}.each do |value|
+        agent.expects(:exec)
+        `mkdir -p #{agent.env_dir}/hahah`
+        agent.cleanup_old_branches(value)
+      end
+    end
+
+    it 'does not cleanup otherwise' do
+      agent.expects(:exec).never
+      `mkdir -p #{agent.env_dir}/hahah`
+      agent.cleanup_old_branches('no')
+    end
+  end
+
   def clean
     `rm -rf #{agent.dir}`
   end
