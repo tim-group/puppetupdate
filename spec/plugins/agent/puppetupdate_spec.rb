@@ -145,6 +145,18 @@ describe MCollective::Agent::Puppetupdate do
     end
   end
 
+  describe '#git_auth' do
+    it 'sets GIT_SSH env from config' do
+      agent.stubs(:config).with('ssh_key').returns('hello')
+      agent.git_auth { `echo $GIT_SSH`.should match(/wrapper/) }
+      agent.git_auth { `echo $GIT_SSH_KEY`.should match(/hello/) }
+    end
+
+    it 'yields directly when config is empty' do
+      agent.git_auth { `echo $GIT_SSH` }.strip.should == ''
+    end
+  end
+
   def clean
     `rm -rf #{agent.dir}`
   end

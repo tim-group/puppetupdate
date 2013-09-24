@@ -113,10 +113,25 @@ module MCollective
       end
 
       def update_bare_repo
-        if File.exists?(git_dir)
-          run "(cd #{git_dir}; git fetch origin; git remote prune origin)"
+        git_auth do
+          if File.exists?(git_dir)
+            run "(cd #{git_dir}; git fetch origin; git remote prune origin)"
+          else
+            run "git clone --mirror #{@repo_url} #{git_dir}"
+          end
+        end
+      end
+
+      def git_auth
+        if ssh_key = config('ssh_key')
+          ENV['GIT_SSH'] =
+            File.expand_path("#{File.dirname(__FILE__)}/../bin/ssh_wrapper.sh")
+          ENV['GIT_SSH_KEY'] = ssh_key
+          yield
+          ENV.delete 'GIT_SSH'
+          ENV.delete 'GIT_SSH_KEY'
         else
-          run "git clone --mirror #{@repo_url} #{git_dir}"
+          yield
         end
       end
 
