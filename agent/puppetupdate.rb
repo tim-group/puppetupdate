@@ -8,7 +8,7 @@ module MCollective
 
         begin
           update_all_branches
-          write_puppet_conf request[:write_conf]
+          write_puppet_conf
           cleanup_old_branches request[:cleanup]
           git_reset "master"
           reply[:output] = "Done"
@@ -30,7 +30,7 @@ module MCollective
 
           update_bare_repo
           update_branch(branch, revision)
-          write_puppet_conf request[:write_conf]
+          write_puppet_conf
           cleanup_old_branches request[:cleanup]
           reply[:output] = "Done"
         rescue Exception => e
@@ -41,9 +41,10 @@ module MCollective
       attr_accessor :dir, :repo_url
 
       def initialize
-        @debug    = true
-        @dir      = config('directory') || '/etc/puppet'
-        @repo_url = config('repository') || 'http://git/git/puppet'
+        @debug          = true
+        @dir            = config('directory') || '/etc/puppet'
+        @repo_url       = config('repository') || 'http://git/git/puppet'
+        @rewrite_config = config('rewrite_config') || 1
         super
       end
 
@@ -80,8 +81,8 @@ module MCollective
         end
       end
 
-      def write_puppet_conf(config=nil)
-        return if config && config !~ /yes|1|true/
+      def write_puppet_conf
+        return unless @rewrite_config && @rewrite_config !~ /yes|1|true/
 
         File.open("#{@dir}/puppet.conf", "w") do |f|
           f.puts File.read("#{@dir}/puppet.conf.base")
