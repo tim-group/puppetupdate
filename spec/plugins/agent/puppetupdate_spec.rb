@@ -130,6 +130,21 @@ describe MCollective::Agent::Puppetupdate do
     end
   end
 
+  describe 'updating deleted branch' do
+    it 'does not fail and cleans up branch' do
+      new_branch 'testing_del_branch'
+      agent.update_branch 'testing_del_branch'
+      agent.env_branches.include?('testing_del_branch').should == true
+
+      del_branch 'testing_del_branch'
+      agent.env_branches.include?('testing_del_branch').should == true
+
+      agent.update_branch 'testing_del_branch'
+      agent.cleanup_old_branches
+      agent.env_branches.include?('testing_del_branch').should == false
+    end
+  end
+
   def clean
     `rm -rf #{agent.dir}`
   end
@@ -140,5 +155,24 @@ describe MCollective::Agent::Puppetupdate do
 
   def clone_bare
     `git clone --mirror #{agent.repo_url} #{agent.git_dir}`
+  end
+
+  def new_branch(name)
+    tmp_dir = Dir.mktmpdir
+    system <<-SHELL
+      git clone #{agent.repo_url} #{tmp_dir} >/dev/null 2>&1;
+      cd #{tmp_dir};
+      git checkout -b #{name} >/dev/null 2>&1;
+      git push origin #{name} >/dev/null 2>&1
+    SHELL
+  end
+
+  def del_branch(name)
+    tmp_dir = Dir.mktmpdir
+    system <<-SHELL
+      git clone #{agent.repo_url} #{tmp_dir} >/dev/null 2>&1;
+      cd #{tmp_dir};
+      git push origin :#{name} >/dev/null 2>&1
+    SHELL
   end
 end

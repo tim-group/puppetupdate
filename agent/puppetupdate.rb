@@ -28,7 +28,6 @@ module MCollective
           branch   = request[:branch]
           revision = request[:revision]
 
-          update_bare_repo
           update_branch(branch, revision)
           write_puppet_conf
           cleanup_old_branches request[:cleanup]
@@ -57,7 +56,7 @@ module MCollective
       end
 
       def git_branches
-        @git_branches ||= %x[cd #{git_dir} && git branch -a].lines.
+        %x[cd #{git_dir} && git branch -a].lines.
           reject {|l| l =~ /\//}.
           map {|l| l.gsub(/\*/, '').strip}
       end
@@ -96,6 +95,9 @@ module MCollective
       end
 
       def update_branch(branch, revision=nil)
+        update_bare_repo
+        return unless git_branches.include? branch
+
         branch_path = "#{env_dir}/#{branch_dir(branch)}/"
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_path) unless File.exist?(branch_path)
