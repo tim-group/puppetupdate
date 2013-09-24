@@ -40,7 +40,6 @@ module MCollective
       attr_accessor :dir, :repo_url
 
       def initialize
-        @debug    = true
         @dir      = config('directory', '/etc/puppet')
         @repo_url = config('repository', 'http://git/git/puppet')
         super
@@ -75,7 +74,7 @@ module MCollective
 
         keep = git_branches.map{|b| branch_dir(b)}
         (env_branches - keep).each do |branch|
-          exec "rm -rf #{env_dir}/#{branch}"
+          run "rm -rf #{env_dir}/#{branch}"
         end
       end
 
@@ -106,7 +105,7 @@ module MCollective
       end
 
       def git_reset(revision, work_tree=@dir)
-        exec "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
+        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
       end
 
       def branch_dir(branch)
@@ -115,18 +114,13 @@ module MCollective
 
       def update_bare_repo
         if File.exists?(git_dir)
-          exec "(cd #{git_dir}; git fetch origin; git remote prune origin)"
+          run "(cd #{git_dir}; git fetch origin; git remote prune origin)"
         else
-          exec "git clone --mirror #{@repo_url} #{git_dir}"
+          run "git clone --mirror #{@repo_url} #{git_dir}"
         end
       end
 
-      def debug(line)
-        logger.info(line) if @debug == true
-      end
-
-      def exec(cmd)
-        debug "Running cmd #{cmd}"
+      def run(cmd)
         output=`#{cmd} 2>&1`
         raise "#{cmd} failed with: #{output}" unless $?.success?
       end

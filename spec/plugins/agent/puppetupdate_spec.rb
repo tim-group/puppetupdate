@@ -110,21 +110,21 @@ describe MCollective::Agent::Puppetupdate do
 
   describe '#cleanup_old_branches' do
     it 'cleans up by default' do
-      agent.expects(:exec)
+      agent.expects(:run)
       `mkdir -p #{agent.env_dir}/hahah`
       agent.cleanup_old_branches
     end
 
     it 'cleans up with yes/1/true' do
       %w{yes 1 true}.each do |value|
-        agent.expects(:exec)
+        agent.expects(:run)
         `mkdir -p #{agent.env_dir}/hahah`
         agent.cleanup_old_branches(value)
       end
     end
 
     it 'does not cleanup otherwise' do
-      agent.expects(:exec).never
+      agent.expects(:run).never
       `mkdir -p #{agent.env_dir}/hahah`
       agent.cleanup_old_branches('no')
     end
