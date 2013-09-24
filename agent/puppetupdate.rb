@@ -41,14 +41,13 @@ module MCollective
       attr_accessor :dir, :repo_url
 
       def initialize
-        @debug          = true
-        @dir            = config('directory') || '/etc/puppet'
-        @repo_url       = config('repository') || 'http://git/git/puppet'
-        @rewrite_config = config('rewrite_config') || 1
+        @debug    = true
+        @dir      = config('directory', '/etc/puppet')
+        @repo_url = config('repository', 'http://git/git/puppet')
         super
       end
 
-      def git_dir; config('clone_at') || "#{@dir}/puppet.git"; end
+      def git_dir; config('clone_at', "#{@dir}/puppet.git"); end
       def env_dir; "#{@dir}/environments"; end
 
       def load_puppet
@@ -82,7 +81,7 @@ module MCollective
       end
 
       def write_puppet_conf
-        return unless @rewrite_config && @rewrite_config !~ /yes|1|true/
+        return unless config('rewrite_config', true)
 
         File.open("#{@dir}/puppet.conf", "w") do |f|
           f.puts File.read("#{@dir}/puppet.conf.base")
@@ -132,10 +131,10 @@ module MCollective
 
     private
 
-      def config(key)
-        Config.instance.pluginconf["puppetupdate.#{key}"]
+      def config(key, default=nil)
+        Config.instance.pluginconf.fetch("puppetupdate.#{key}", default)
       rescue
-        nil
+        default
       end
     end
   end

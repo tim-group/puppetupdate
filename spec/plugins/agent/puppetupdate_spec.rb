@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby -S rspec
+$: << '.'
 require 'singleton'
 require 'mcollective'
 require 'mcollective/logger'
@@ -14,7 +15,7 @@ require 'test/unit'
 require 'yaml'
 require 'tmpdir'
 require 'spec_helper'
-require "#{File.dirname(__FILE__)}/../../../agent/puppetupdate"
+require 'agent/puppetupdate'
 
 describe MCollective::Agent::Puppetupdate do
   let(:agent) {
@@ -50,11 +51,8 @@ describe MCollective::Agent::Puppetupdate do
   end
 
   it "#git_dir should depend on config" do
-    require 'pp'
-    pp MCollective::Config.instance.pluginconf
-    MCollective::Config.instance.pluginconf["puppetupdate.clone_at"] = "hello"
+    agent.expects(:config).returns("hello")
     agent.git_dir.should == "hello"
-    MCollective::Config.instance.pluginconf["puppetupdate.clone_at"] = nil
   end
 
   it "#branch_dir is not using reserved branch" do
@@ -97,21 +95,14 @@ describe MCollective::Agent::Puppetupdate do
   end
 
   describe '#write_puppet_conf' do
-    it 'writes config by default' do
+    it 'writes puppet.conf when config is true' do
+      agent.expects(:config).with('rewrite_config', true).returns(true)
       File.expects(:open)
       agent.write_puppet_conf
     end
 
-    it 'writes config with yes/1/true' do
-      %w{yes 1 true}.each do |value|
-        MCollective::Config.instance.pluginconf["puppetupdate.rewrite_config"] = value
-        File.expects(:open)
-        agent.write_puppet_conf
-      end
-    end
-
     it 'does not write config otherwise' do
-      MCollective::Config.instance.pluginconf["puppetupdate.rewrite_config"] = "no"
+      agent.expects(:config).with('rewrite_config', true).returns(false)
       File.expects(:open).never
       agent.write_puppet_conf
     end
@@ -151,4 +142,3 @@ describe MCollective::Agent::Puppetupdate do
     `git clone --mirror #{agent.repo_url} #{agent.git_dir}`
   end
 end
-
