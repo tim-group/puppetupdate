@@ -24,7 +24,8 @@ action "update", :description => "Update the branch to a specific revision" do
     :optional    => true,
     :type        => :string,
     :prompt      => "Git branch",
-    :validation  => ".+"
+    :validation  => ".+",
+    :maxlength   => 255
 
   input :cleanup,
     :description => "cleanup old branches",
@@ -32,7 +33,8 @@ action "update", :description => "Update the branch to a specific revision" do
     :optional    => true,
     :type        => :string,
     :prompt      => "Cleanup (yes/no)",
-    :validation  => ".+"
+    :validation  => ".+",
+    :maxlength   => 3
 
   output :status,
     :description => "The status of the git pull",
@@ -48,7 +50,8 @@ action "update_all", :description => "Update all branches on the puppetmaster" d
     :optional    => true,
     :type        => :string,
     :prompt      => "Cleanup (yes/no)",
-    :validation  => ".+"
+    :validation  => ".+",
+    :maxlength   => 3
 
   output :status,
     :description => "The status of the git pull",
