@@ -61,7 +61,6 @@ module MCollective
 
       def git_branches
         strip_ignored_branches %x[cd #{git_dir} && git branch -a].lines.
-          reject {|l| l =~ /\//}.
           map {|l| l.gsub(/\*/, '').strip}
       end
 
@@ -115,6 +114,7 @@ module MCollective
       end
 
       def branch_dir(branch)
+        branch.gsub! /\//, '--'
         %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
       end
 
