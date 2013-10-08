@@ -1,14 +1,19 @@
 class MCollective::Application::Puppetupdate < MCollective::Application
   description "Puppet repository updates Client"
-  usage "Usage: mco puppetupdate -T oyldn or mco puppetupdate [<branch> [<sha1>]]"
+  usage "Usage: mco puppetupdate update_all -T oyldn or mco puppetupdate [update <branch> [<sha1>]]"
 
   def post_option_parser(configuration)
     if ARGV.length >= 1
-      configuration[:command]  = "update"
+      configuration[:command]  = ARGV.shift
+      unless configuration[:command] =~ /^update(_all)?$/
+        STDERR.puts "Don't understand command '#{configuration[:command]}', please use update <branch> [<sha1>] or update_all"
+        exit 1
+      end
       configuration[:branch]   = ARGV.shift
       configuration[:revision] = ARGV.shift
     else
-      configuration[:command] = "update_all"
+      STDERR.puts "Please specify an action (update <branch>|update_all) on the command line"
+      exit 1
     end
   end
 
@@ -24,3 +29,4 @@ class MCollective::Application::Puppetupdate < MCollective::Application
     printrpcstats
   end
 end
+
