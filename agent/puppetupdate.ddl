@@ -15,7 +15,7 @@ action "update", :description => "Update the branch to a specific revision" do
     :optional    => true,
     :type        => :string,
     :prompt      => "Git hash",
-    :validation  => ".+",
+    :validation  => ".*",
     :maxlength   => 40
 
   input :branch,

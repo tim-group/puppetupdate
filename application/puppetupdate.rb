@@ -10,7 +10,11 @@ class MCollective::Application::Puppetupdate < MCollective::Application
         exit 1
       end
       configuration[:branch]   = ARGV.shift
-      configuration[:revision] = ARGV.shift
+      if configuration[:command] == 'update' and configuration[:branch].nil?
+        STDERR.puts "Don't understand update without a branch name"
+        exit 1
+      end
+      configuration[:revision] = ARGV.shift || ''
     else
       STDERR.puts "Please specify an action (update <branch>|update_all) on the command line"
       exit 1

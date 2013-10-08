@@ -99,7 +99,7 @@ module MCollective
         end
       end
 
-      def update_branch(branch, revision=nil)
+      def update_branch(branch, revision='')
         update_bare_repo
         return unless git_branches.include? branch
 
