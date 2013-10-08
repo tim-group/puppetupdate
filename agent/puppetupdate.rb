@@ -114,7 +114,7 @@ module MCollective
       end
 
       def branch_dir(branch)
-        branch.gsub! /\//, '--'
+        branch.gsub! /\//, '__'
         %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
       end
 
