@@ -130,12 +130,17 @@ module MCollective
 
       def git_auth
         if ssh_key = config('ssh_key')
-          ENV['GIT_SSH'] =
-            File.expand_path("#{File.dirname(__FILE__)}/../bin/ssh_wrapper.sh")
-          ENV['GIT_SSH_KEY'] = ssh_key
-          yield
-          ENV.delete 'GIT_SSH'
-          ENV.delete 'GIT_SSH_KEY'
+          Dir.mktmpdir do |dir|
+            wrapper_file = "#{dir}/ssh_wrapper.sh"
+            File.open(wrapper_file, 'w') do |f|
+              f.print "#!/bin/sh\n"
+              f.print "exec /usr/bin/ssh -o StrictHostKeyChecking=no -i #{ssh_key} \"$@\"\n"
+            end
+            File.chmod(0700, wrapper_file)
+            ENV['GIT_SSH'] = wrapper_file
+            yield
+            ENV.delete 'GIT_SSH'
+          end
         else
           yield
         end
