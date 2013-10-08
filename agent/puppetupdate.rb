@@ -42,6 +42,7 @@ module MCollective
       def initialize
         @dir      = config('directory', '/etc/puppet')
         @repo_url = config('repository', 'http://git/git/puppet')
+        @ignore   = config('ignore_branches', '').split ','
         super
       end
 
@@ -54,14 +55,18 @@ module MCollective
         reply.fail! "Cannot load Puppet"
       end
 
+      def strip_ignored_branches(branch_list)
+        branch_list.reject { |branch| @ignore.include? branch }
+      end
+
       def git_branches
-        %x[cd #{git_dir} && git branch -a].lines.
+        strip_ignored_branches %x[cd #{git_dir} && git branch -a].lines.
           reject {|l| l =~ /\//}.
           map {|l| l.gsub(/\*/, '').strip}
       end
 
       def env_branches
-        %x[ls -1 #{env_dir}].lines.map(&:strip)
+        strip_ignored_branches %x[ls -1 #{env_dir}].lines.map(&:strip)
       end
 
       def update_all_branches
