@@ -96,7 +96,8 @@ describe MCollective::Agent::Puppetupdate do
 
   describe '#write_puppet_conf' do
     it 'writes puppet.conf when config is true' do
-      agent.expects(:config).with('rewrite_config', true).returns(true)
+      agent.expects(:config).with('rewrite_config', true).returns('true')
+      agent.expects(:config).with('rewrite_config', true).returns('true')
       File.expects(:open)
       agent.write_puppet_conf
     end

@@ -80,6 +80,7 @@ module MCollective
 
       def write_puppet_conf
         return unless config('rewrite_config', true)
+        return if config('rewrite_config', true) =~ /^(0|no|false)$/
 
         File.open("#{@dir}/puppet.conf", "w") do |f|
           f.puts File.read("#{@dir}/puppet.conf.base")
