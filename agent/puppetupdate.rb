@@ -106,7 +106,7 @@ module MCollective
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_path) unless File.exist?(branch_path)
 
-        git_reset(revision || branch, branch_path)
+        git_reset(revision.length > 0 ? revision : branch, branch_path)
       end
 
       def git_reset(revision, work_tree=@dir)
@@ -114,7 +114,7 @@ module MCollective
       end
 
       def branch_dir(branch)
-        branch.gsub! /\//, '__'
+        branch = branch.gsub /\//, '__'
         %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
       end
 
