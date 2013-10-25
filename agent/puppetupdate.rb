@@ -37,12 +37,13 @@ module MCollective
         end
       end
 
-      attr_accessor :dir, :repo_url
+      attr_accessor :dir, :repo_url, :ignore_branches, :run_after_checkout
 
       def initialize
-        @dir      = config('directory', '/etc/puppet')
-        @repo_url = config('repository', 'http://git/git/puppet')
-        @ignore   = config('ignore_branches', '').split ','
+        @dir                = config('directory', '/etc/puppet')
+        @repo_url           = config('repository', 'http://git/git/puppet')
+        @ignore_branches    = config('ignore_branches', '').split ','
+        @run_after_checkout = config('run_after_checkout', nil)
         super
       end
 
@@ -56,7 +57,7 @@ module MCollective
       end
 
       def strip_ignored_branches(branch_list)
-        branch_list.reject { |branch| @ignore.include? branch }
+        branch_list.reject { |branch| ignore_branches.include? branch }
       end
 
       def git_branches
@@ -107,6 +108,9 @@ module MCollective
         Dir.mkdir(branch_path) unless File.exist?(branch_path)
 
         git_reset(revision.length > 0 ? revision : branch, branch_path)
+        if run_after_checkout
+          Dir.chdir(branch_path) { system run_after_checkout }
+        end
       end
 
       def git_reset(revision, work_tree=@dir)
