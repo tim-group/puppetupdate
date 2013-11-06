@@ -8,9 +8,6 @@ module MCollective
 
         begin
           update_all_branches
-          write_puppet_conf
-          cleanup_old_branches request[:cleanup]
-          git_reset "master"
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -25,12 +22,7 @@ module MCollective
         load_puppet
 
         begin
-          branch   = request[:branch]
-          revision = request[:revision]
-
-          update_branch(branch, revision)
-          write_puppet_conf
-          cleanup_old_branches request[:cleanup]
+          update_single_branch(request[:branch], request[:revision])
           reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
@@ -56,6 +48,13 @@ module MCollective
         reply.fail! "Cannot load Puppet"
       end
 
+      def update_single_branch(branch, revision='')
+        load_puppet
+        update_branch(branch, revision)
+        write_puppet_conf
+        cleanup_old_branches
+       end
+
       def strip_ignored_branches(branch_list)
         branch_list.reject { |branch| ignore_branches.include? branch }
       end
@@ -72,6 +71,9 @@ module MCollective
       def update_all_branches
         update_bare_repo
         git_branches.each {|branch| update_branch(branch) }
+        write_puppet_conf
+        cleanup_old_branches
+        git_reset "master"
       end
 
       def cleanup_old_branches(config=nil)

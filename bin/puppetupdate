@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+require 'mcollective'
+require 'mcollective/pluginmanager'
+
+MCollective::Config.instance.loadconfig('/etc/mcollective/server.cfg')
+MCollective::PluginManager.find("agent")
+MCollective::PluginManager.loadclass('MCollective::Agent::Puppetupdate')
+if branch = ARGV.first
+  MCollective::Agent::Puppetupdate.new.update_single_branch branch
+else
+  MCollective::Agent::Puppetupdate.new.update_all_branches
+end
+
