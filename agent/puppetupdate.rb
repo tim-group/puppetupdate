@@ -73,7 +73,6 @@ module MCollective
         git_branches.each {|branch| update_branch(branch) }
         write_puppet_conf
         cleanup_old_branches
-        git_reset "master"
       end
 
       def cleanup_old_branches(config=nil)
@@ -115,7 +114,7 @@ module MCollective
         end
       end
 
-      def git_reset(revision, work_tree=@dir)
+      def git_reset(revision, work_tree)
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
       end
 
