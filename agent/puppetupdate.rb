@@ -117,7 +117,6 @@ module MCollective
 
       def git_reset(revision, work_tree=@dir)
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
-        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
       end
 
       def branch_dir(branch)
