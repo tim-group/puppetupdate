@@ -36,6 +36,14 @@ action "update", :description => "Update the branch to a specific revision" do
     :validation  => ".+",
     :maxlength   => 3
 
+  output :from,
+    :description => "The sha we updated from",
+    :display_as  => "From"
+
+  output :to,
+    :description => "The sha we updated to",
+    :display_as  => "To"
+
   output :status,
     :description => "The status of the git pull",
     :display_as  => "Pull Status"

@@ -22,8 +22,9 @@ module MCollective
         load_puppet
 
         begin
-          update_single_branch(request[:branch], request[:revision])
-          reply[:output] = "Done"
+          ret = update_single_branch(request[:branch], request[:revision])
+          reply[:status] = "Done"
+          [:from, :to].each { |s| reply[s] = ret[s] }
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
@@ -50,9 +51,10 @@ module MCollective
 
       def update_single_branch(branch, revision='')
         load_puppet
-        update_branch(branch, revision)
+        ret = update_branch(branch, revision)
         write_puppet_conf
         cleanup_old_branches
+        ret
        end
 
       def strip_ignored_branches(branch_list)
@@ -108,15 +110,19 @@ module MCollective
         Dir.mkdir(env_dir) unless File.exist?(env_dir)
         Dir.mkdir(branch_path) unless File.exist?(branch_path)
 
-        git_reset(revision.length > 0 ? revision : branch, branch_path)
+        ret = git_reset(revision.length > 0 ? revision : branch, branch_path)
         if run_after_checkout
-          Dir.chdir(branch_path) { system run_after_checkout }
+          Dir.chdir(branch_path) { ret[:after_checkout] = system run_after_checkout }
         end
+        ret
       end
 
       def git_reset(revision, work_tree)
+        from = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
+        to = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
+        { :from => from, :to => to }
       end
 
       def branch_dir(branch)
@@ -156,6 +162,7 @@ module MCollective
       def run(cmd)
         output=`#{cmd} 2>&1`
         raise "#{cmd} failed with: #{output}" unless $?.success?
+        output
       end
 
     private
