@@ -23,8 +23,12 @@ module MCollective
 
         begin
           ret = update_single_branch(request[:branch], request[:revision])
-          reply[:status] = "Done"
-          [:from, :to].each { |s| reply[s] = ret[s] }
+          if ret
+	    reply[:status] = "Done"
+            [:from, :to].each { |s| reply[s] = ret[s] }
+	  else
+	    reply[:status] = "Deleted"
+	  end
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
