@@ -38,16 +38,23 @@ describe MCollective::Agent::Puppetupdate do
         git commit -am "add puppet.conf.base file"
         git push origin master 2>&1
         git checkout -b branch1 2>&1
-        git push origin branch1 2>&1 ) >/dev/null
+        git push origin branch1 2>&1
+        git checkout -b must_be_hidden 2>&1 ) >/dev/null
     SHELL
 
     agent.dir      = Dir.mktmpdir
     agent.repo_url = repo_dir
+    agent.ignore_branches = [Regexp.new('^leave_me_alone$')]
+    agent.remove_branches = [Regexp.new('^must')]
 
     clean
     clone_main
     clone_bare
     agent.update_all_branches
+  end
+
+  it "#strip_ignored_branches works" do
+    agent.strip_ignored_branches(['foo', 'bar', 'leave_me_alone']).should == ['foo', 'bar']
   end
 
   it "#git_dir should depend on config" do
@@ -85,6 +92,19 @@ describe MCollective::Agent::Puppetupdate do
     agent.cleanup_old_branches
     File.exist?("#{agent.env_dir}/hahah").should == false
     File.exist?("#{agent.env_dir}/masterbranch").should == true
+  end
+
+  it '#cleanup_old_branches does not remove ignored branches' do
+    `mkdir -p #{agent.env_dir}/leave_me_alone`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/leave_me_alone").should == true
+  end
+
+  it '#cleanup_old_branches does cleanup removed branches' do
+    File.exist?("#{agent.env_dir}/must_be_hidden").should == false
+    `mkdir -p #{agent.env_dir}/must_be_hidden`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/must_be_hidden").should == false
   end
 
   it 'checks out an arbitrary Git hash from a fresh repo' do

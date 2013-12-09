@@ -30,12 +30,13 @@ module MCollective
         end
       end
 
-      attr_accessor :dir, :repo_url, :ignore_branches, :run_after_checkout
+      attr_accessor :dir, :repo_url, :ignore_branches, :run_after_checkout, :remove_branches
 
       def initialize
         @dir                = config('directory', '/etc/puppet')
         @repo_url           = config('repository', 'http://git/git/puppet')
-        @ignore_branches    = config('ignore_branches', '').split ','
+        @ignore_branches    = config('ignore_branches', '').split(',').map { |i| regexy_string(i) }
+        @remove_branches    = config('remove_branches', '').split(',').map { |r| regexy_string(r) }
         @run_after_checkout = config('run_after_checkout', nil)
         super
       end
@@ -58,7 +59,9 @@ module MCollective
        end
 
       def strip_ignored_branches(branch_list)
-        branch_list.reject { |branch| ignore_branches.include? branch }
+        branch_list.reject do |branch| 
+          ignore_branches.select { |b| b.match(branch) }.count > 0
+        end
       end
 
       def git_branches
@@ -171,6 +174,14 @@ module MCollective
         Config.instance.pluginconf.fetch("puppetupdate.#{key}", default)
       rescue
         default
+      end
+
+      def regexy_string(string)
+        if string.match("^/")
+          Regexp.new(string.gsub("\/", ""))
+        else
+          Regexp.new("/^#{string}$/")
+        end
       end
     end
   end
