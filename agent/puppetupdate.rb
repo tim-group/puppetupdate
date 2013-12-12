@@ -23,8 +23,12 @@ module MCollective
 
         begin
           ret = update_single_branch(request[:branch], request[:revision])
-          reply[:status] = "Done"
-          [:from, :to].each { |s| reply[s] = ret.nil? ? nil : ret[s] }
+          if ret
+            reply[:status] = "Done"
+            [:from, :to].each { |s| reply[s] = ret[s] }
+          else
+            reply[:status] = "Deleted"
+          end
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
@@ -51,7 +55,7 @@ module MCollective
       end
 
       def update_single_branch(branch, revision='')
-        load_puppet
+        update_bare_repo
         ret = update_branch(branch, revision)
         write_puppet_conf
         cleanup_old_branches
@@ -106,7 +110,6 @@ module MCollective
       end
 
       def update_branch(branch, revision='')
-        update_bare_repo
         return unless git_branches.include? branch
 
         branch_path = "#{env_dir}/#{branch_dir(branch)}/"
