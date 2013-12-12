@@ -54,7 +54,6 @@ module MCollective
       end
 
       def update_single_branch(branch, revision='')
-        load_puppet
         ret = update_branch(branch, revision)
         write_puppet_conf
         cleanup_old_branches
