@@ -54,6 +54,7 @@ module MCollective
       end
 
       def update_single_branch(branch, revision='')
+        update_bare_repo
         ret = update_branch(branch, revision)
         write_puppet_conf
         cleanup_old_branches
@@ -106,7 +107,6 @@ module MCollective
       end
 
       def update_branch(branch, revision='')
-        update_bare_repo
         return unless git_branches.include? branch
 
         branch_path = "#{env_dir}/#{branch_dir(branch)}/"
