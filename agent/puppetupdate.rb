@@ -55,14 +55,14 @@ module MCollective
 
       def update_single_branch(branch, revision='')
         File.open("/tmp/puppetupdate.lock",
-                  FILE::RDWR|FILE::CREAT, 0644) { |lock|
-          lock.flock(FILE::LOCK_EX)
+                  File::RDWR|File::CREAT, 0644) { |lock|
+          lock.flock(File::LOCK_EX)
           update_bare_repo
           ret = update_branch(branch, revision)
           write_puppet_conf
           cleanup_old_branches
+          return ret
         }
-          ret
        end
 
       def strip_ignored_branches(branch_list)
@@ -83,8 +83,8 @@ module MCollective
 
       def update_all_branches
         File.open("/tmp/puppetupdate.lock",
-                  FILE::RDWR|FILE::CREAT, 0644) { |lock|
-          lock.flock(FILE::LOCK_EX)
+                  File::RDWR|File::CREAT, 0644) { |lock|
+          lock.flock(File::LOCK_EX)
           update_bare_repo
           git_branches.each {|branch| update_branch(branch) }
           write_puppet_conf
