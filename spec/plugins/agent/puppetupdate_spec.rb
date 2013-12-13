@@ -154,10 +154,12 @@ describe MCollective::Agent::Puppetupdate do
   describe 'updating deleted branch' do
     it 'does not fail and cleans up branch' do
       new_branch 'testing_del_branch'
+      agent.update_bare_repo
       agent.update_branch 'testing_del_branch'
       agent.env_branches.include?('testing_del_branch').should == true
 
       del_branch 'testing_del_branch'
+      agent.update_bare_repo
       agent.env_branches.include?('testing_del_branch').should == true
 
       agent.update_branch 'testing_del_branch'
