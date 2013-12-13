@@ -67,6 +67,7 @@ module MCollective
 
       def strip_ignored_branches(branch_list)
         branch_list.reject do |branch|
+          branch == '(no branch)' or
           ignore_branches.select { |b| b.match(branch) }.count > 0
         end
       end
