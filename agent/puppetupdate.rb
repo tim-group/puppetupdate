@@ -128,10 +128,11 @@ module MCollective
       end
 
       def git_reset(revision, work_tree)
-        from = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
+        from = File.exists?("#{work_tree}/.git_revision") ? run("cat #{work_tree}/.git_revision").chomp : 'unknown'
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} checkout --detach --force #{revision}"
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
         to = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
+        File.open("#{work_tree}/.git_revision", 'w') { |f| f.puts to }
         { :from => from, :to => to }
       end
 
