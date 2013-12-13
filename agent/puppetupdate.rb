@@ -5,16 +5,9 @@ module MCollective
     class Puppetupdate < RPC::Agent
       action "update_all" do
         load_puppet
-
         begin
-          File.open("/tmp/puppetupdate.lock", FILE::RDWR|FILE::CREAT, 0644) { |lock|
-            if lock.flock(FILE::LOCK_EX|FILE::LOCK_NB)
-              update_all_branches
-              reply[:output] = "Done"
-            else
-              reply.fail! "Branch update already running."
-            end
-          }
+          update_all_branches
+          reply[:output] = "Done"
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
@@ -28,13 +21,7 @@ module MCollective
         load_puppet
 
         begin
-          File.open("/tmp/puppetupdate.lock", FILE::RDWR|FILE::CREAT, 0644) { |lock|
-            if lock.flock(FILE::LOCK_EX|FILE::LOCK_NB)
-              ret = update_single_branch(request[:branch], request[:revision])
-            else
-              reply.fail! "Branch update already running."
-            end
-          }
+          ret = update_single_branch(request[:branch], request[:revision])
           if ret
             reply[:status] = "Done"
             [:from, :to].each { |s| reply[s] = ret[s] }
@@ -67,11 +54,15 @@ module MCollective
       end
 
       def update_single_branch(branch, revision='')
-        update_bare_repo
-        ret = update_branch(branch, revision)
-        write_puppet_conf
-        cleanup_old_branches
-        ret
+        File.open("/tmp/puppetupdate.lock",
+                  FILE::RDWR|FILE::CREAT, 0644) { |lock|
+          lock.flock(FILE::LOCK_EX)
+          update_bare_repo
+          ret = update_branch(branch, revision)
+          write_puppet_conf
+          cleanup_old_branches
+        }
+          ret
        end
 
       def strip_ignored_branches(branch_list)
@@ -90,10 +81,14 @@ module MCollective
       end
 
       def update_all_branches
-        update_bare_repo
-        git_branches.each {|branch| update_branch(branch) }
-        write_puppet_conf
-        cleanup_old_branches
+        File.open("/tmp/puppetupdate.lock",
+                  FILE::RDWR|FILE::CREAT, 0644) { |lock|
+          lock.flock(FILE::LOCK_EX)
+          update_bare_repo
+          git_branches.each {|branch| update_branch(branch) }
+          write_puppet_conf
+          cleanup_old_branches
+        }
       end
 
       def cleanup_old_branches(config=nil)
