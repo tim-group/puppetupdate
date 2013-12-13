@@ -7,8 +7,14 @@ module MCollective
         load_puppet
 
         begin
-          update_all_branches
-          reply[:output] = "Done"
+          File.open("/tmp/puppetupdate.lock", FILE::RDWR|FILE::CREAT, 0644) { |lock|
+            if lock.flock(FILE::LOCK_EX|FILE::LOCK_NB)
+              update_all_branches
+              reply[:output] = "Done"
+            else
+              reply.fail! "Branch update already running."
+            end
+          }
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
@@ -22,7 +28,13 @@ module MCollective
         load_puppet
 
         begin
-          ret = update_single_branch(request[:branch], request[:revision])
+          File.open("/tmp/puppetupdate.lock", FILE::RDWR|FILE::CREAT, 0644) { |lock|
+            if lock.flock(FILE::LOCK_EX|FILE::LOCK_NB)
+              ret = update_single_branch(request[:branch], request[:revision])
+            else
+              reply.fail! "Branch update already running."
+            end
+          }
           if ret
             reply[:status] = "Done"
             [:from, :to].each { |s| reply[s] = ret[s] }
@@ -63,7 +75,7 @@ module MCollective
        end
 
       def strip_ignored_branches(branch_list)
-        branch_list.reject do |branch| 
+        branch_list.reject do |branch|
           ignore_branches.select { |b| b.match(branch) }.count > 0
         end
       end
@@ -125,7 +137,7 @@ module MCollective
 
       def git_reset(revision, work_tree)
         from = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
-        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} reset --hard #{revision}"
+        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} checkout --detach --force #{revision}"
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
         to = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
         { :from => from, :to => to }
