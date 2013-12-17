@@ -197,7 +197,7 @@ module MCollective
         if string.match("^/")
           Regexp.new(string.gsub("\/", ""))
         else
-          Regexp.new("/^#{string}$/")
+          Regexp.new("^#{string}$")
         end
       end
     end
