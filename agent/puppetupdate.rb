@@ -37,7 +37,7 @@ module MCollective
 
       def initialize
         @dir                = config('directory', '/etc/puppet')
-        @repo_url           = config('repository', 'http://git/git/puppet')
+        @repo_url           = config('repository', 'http://git/puppet')
         @ignore_branches    = config('ignore_branches', '').split(',').map { |i| regexy_string(i) }
         @remove_branches    = config('remove_branches', '').split(',').map { |r| regexy_string(r) }
         @run_after_checkout = config('run_after_checkout', nil)
