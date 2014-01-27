@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby -S rspec
+$: << '.'
 require 'singleton'
 require 'mcollective'
 require 'mcollective/logger'
@@ -13,203 +14,199 @@ require 'mcollective/ddl'
 require 'test/unit'
 require 'yaml'
 require 'tmpdir'
-require 'test/unit'
+require 'spec_helper'
+require 'agent/puppetupdate'
 
-describe 'files/agent/puppetupdate.rb' do
+describe MCollective::Agent::Puppetupdate do
+  let(:agent) {
+    MCollective::Test::LocalAgentTest.new("puppetupdate",
+      :agent_file => "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb").
+    plugin }
 
-  before do
-    @spec_file_dir  = File.dirname __FILE__
-    @file_under_test_dir = "#{@spec_file_dir}/../../../files"
+  before(:all) do
+    repo_dir = Dir.mktmpdir
+    system <<-SHELL
+      ( cd #{repo_dir}
+        git init --bare
+        cd #{Dir.mktmpdir}
+        git clone #{repo_dir} . 2>&1
+        echo 'helllo' > file1
+        git add file1
+        git commit -am "my first commit"
+        echo 'hello2' > puppet.conf.base
+        git add puppet.conf.base
+        git commit -am "add puppet.conf.base file"
+        git push origin master 2>&1
+        git checkout -b branch1 2>&1
+        git push origin branch1 2>&1
+        git checkout -b must_be_hidden 2>&1 ) >/dev/null
+    SHELL
 
-    require "#{@file_under_test_dir}/mcollective/agent/puppetupdate"
+    agent.dir      = Dir.mktmpdir
+    agent.repo_url = repo_dir
+    agent.ignore_branches = [Regexp.new('^leave_me_alone$')]
+    agent.remove_branches = [Regexp.new('^must')]
 
-    MCollective::Config.instance.set_config_defaults("/etc/mcollective/server.cfg")
-    MCollective::Config.instance.libdir << @file_under_test_dir
+    clean
+    clone_main
+    clone_bare
+    agent.update_all_branches
+  end
 
-    @gitrepo = Dir.mktmpdir
+  it "#strip_ignored_branches works" do
+    agent.strip_ignored_branches(['foo', 'bar', 'leave_me_alone']).should == ['foo', 'bar']
+  end
 
-    Dir.chdir(@gitrepo) do
-     `git init --bare`
+  it "#git_dir should depend on config" do
+    agent.expects(:config).returns("hello")
+    agent.git_dir.should == "hello"
+  end
+
+  it "#branch_dir is not using reserved branch" do
+    agent.branch_dir('foobar').should == 'foobar'
+    agent.branch_dir('master').should == 'masterbranch'
+    agent.branch_dir('user').should   == 'userbranch'
+    agent.branch_dir('agent').should  == 'agentbranch'
+    agent.branch_dir('main').should   == 'mainbranch'
+  end
+
+  describe "#update_bare_repo" do
+    before { clean && clone_main }
+
+    it "clones fresh repository" do
+      agent.update_bare_repo
+      File.directory?(agent.git_dir).should be true
+      agent.git_branches.size.should be > 1
     end
 
-    Dir.mktmpdir {|dir|
-      Dir.chdir(dir) {
-        `git clone #{@gitrepo} myrepo`
-        Dir.chdir("myrepo") {
-          `echo 'helllo' > file1`
-          `git add file1`
-          `git commit -am "my first commit"`
-          `echo 'hello2' > puppet.conf.base`
-          `git add puppet.conf.base`
-          `git commit -am "add puppet.conf.base file"`
-          `git push origin master`
-          `git checkout -b branch1`
-          `git push origin branch1`
-        }
-      }
-  }
-
+    it "fetches repository when present" do
+      clone_bare
+      agent.update_bare_repo
+      File.directory?(agent.git_dir).should be true
+      agent.git_branches.size.should be > 1
+    end
   end
 
-  it 'clones bare repo' do
-    Dir.mktmpdir {|dir|
-      # Checkout
-      a = MCollective::Agent::Puppetupdate.new()
-      a.dir = dir
-      a.repo_url="#{@gitrepo}"
-      a.update_bare_repo()
-      # Assert it's there
-      File.directory?("#{dir}/puppet.git").should be true
-
-      # Checkout a second time to make sure we update right
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      lambda { puppetupdater.update_bare_repo() }.should_not raise_error
-    }
+  it '#cleanup_old_branches removes branches no longer in repo' do
+    `mkdir -p #{agent.env_dir}/hahah`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/hahah").should == false
+    File.exist?("#{agent.env_dir}/masterbranch").should == true
   end
 
-  it 'finds branches' do
-    Dir.mktmpdir {|dir|
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      puppetupdater.repo_url="#{@gitrepo}"
-      # Checkout
-      puppetupdater.update_bare_repo()
-      # Assert it's there
-      File.directory?("#{dir}/puppet.git").should be true
-
-      branches = puppetupdater.branches()
-      branches.size.should be > 1
-    }
+  it '#cleanup_old_branches does not remove ignored branches' do
+    `mkdir -p #{agent.env_dir}/leave_me_alone`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/leave_me_alone").should == true
   end
 
-  it 'local branch name munging' do
-    Dir.mktmpdir {|dir|
-      puppetupdater = MCollective::Agent::Puppetupdate.new()
-      puppetupdater.dir = dir
-      puppetupdater.repo_url="#{@gitrepo}"
-      puppetupdater.local_branch_name('/foobar').should be == 'foobar'
-      puppetupdater.local_branch_name('* foobar').should be == 'foobar'
-      puppetupdater.local_branch_name('* notmaster').should be == 'notmaster'
-      puppetupdater.local_branch_name('* masterless').should be == 'masterless'
-      puppetupdater.local_branch_name('* foomasterbar').should be == 'foomasterbar'
-      puppetupdater.local_branch_name('* master').should be == 'masterbranch'
-    }
+  it '#cleanup_old_branches does cleanup removed branches' do
+    File.exist?("#{agent.env_dir}/must_be_hidden").should == false
+    `mkdir -p #{agent.env_dir}/must_be_hidden`
+    agent.cleanup_old_branches
+    File.exist?("#{agent.env_dir}/must_be_hidden").should == false
   end
-
-  it 'checks out the HEAD by default' do
-    Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
-      Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        puppetupdater.update_all_branches()
-        puppetupdater.update_master_checkout()
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
-          master_rev = `git rev-list master --max-count=1`.chomp
-          head_rev = `git rev-parse HEAD`.chomp
-          master_rev.should be == head_rev
-          master_rev.size.should be == 40
-        end
-      }
-
-   }
-  end
-
-  it 'does not cleanup default branch at end' do
-    Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
-      Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        `mkdir -p #{puppetupdater.dir}/environments/default`
-        File.exist?("#{puppetupdater.dir}/environments/default").should eql true
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        File.exist?("#{puppetupdater.dir}/environments/default").should eql true
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
-          head_rev = `git rev-parse HEAD`.chomp
-          head_rev.should be == previous_rev
-          head_rev.size.should be == 40
-        end
-      }
-
-   }
-  end
-
-
-  it 'cleans up old branches' do
-    Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
-      Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        `mkdir -p #{puppetupdater.dir}/environments/hahah`
-        File.exist?("#{puppetupdater.dir}/environments/hahah").should eql true
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        File.exist?("#{puppetupdater.dir}/environments/hahah").should eql false
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
-          head_rev = `git rev-parse HEAD`.chomp
-          head_rev.should be == previous_rev
-          head_rev.size.should be == 40
-        end
-      }
-
-   }
-  end
-
 
   it 'checks out an arbitrary Git hash from a fresh repo' do
-    Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
-      Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
-        puppetupdater.update_all_branches({"* master"=>previous_rev})
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
-          head_rev = `git rev-parse HEAD`.chomp
-          head_rev.should be == previous_rev
-          head_rev.size.should be == 40
-        end
-      }
-
-   }
+    previous_rev = `cd #{agent.dir}/puppet.git; git rev-list master --max-count=1 --skip=1`.chomp
+    agent.update_branch("master", previous_rev)
+    File.exist?("#{agent.env_dir}/masterbranch/file1").should == true
+    File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should == false
   end
 
-  def initial_checkout(puppetupdater,previous_rev)
-    puppetupdater.update_all_branches({"* master"=>previous_rev})
+  describe '#write_puppet_conf' do
+    it 'writes puppet.conf when config is true' do
+      agent.expects(:config).with('rewrite_config', true).returns('true')
+      agent.expects(:config).with('rewrite_config', true).returns('true')
+      File.expects(:open)
+      agent.write_puppet_conf
+    end
+
+    it 'does not write config otherwise' do
+      agent.expects(:config).with('rewrite_config', true).returns(false)
+      File.expects(:open).never
+      agent.write_puppet_conf
+    end
   end
 
-  def checkout_again(puppetupdater,previous_rev)
-    puppetupdater.update_all_branches({"* master"=>previous_rev})
+  describe '#cleanup_old_branches' do
+    it 'cleans up by default' do
+      agent.expects(:run)
+      `mkdir -p #{agent.env_dir}/hahah`
+      agent.cleanup_old_branches
+    end
+
+    it 'cleans up with yes/1/true' do
+      %w{yes 1 true}.each do |value|
+        agent.expects(:run)
+        `mkdir -p #{agent.env_dir}/hahah`
+        agent.cleanup_old_branches(value)
+      end
+    end
+
+    it 'does not cleanup otherwise' do
+      agent.expects(:run).never
+      `mkdir -p #{agent.env_dir}/hahah`
+      agent.cleanup_old_branches('no')
+    end
   end
 
-  it 'checks out an arbitrary Git hash from an existing repo' do
-    Dir.mktmpdir {|dir|
-     `git clone #{@gitrepo} #{dir}/myrepo`
-      Dir.chdir("#{dir}/myrepo") {
-        puppetupdater = MCollective::Agent::Puppetupdate.new()
-        puppetupdater.dir = "#{dir}/myrepo"
-        puppetupdater.repo_url="#{@gitrepo}"
-        previous_rev = `git rev-list master --max-count=1 --skip=1`.chomp
+  describe 'updating deleted branch' do
+    it 'does not fail and cleans up branch' do
+      new_branch 'testing_del_branch'
+      agent.update_bare_repo
+      agent.update_branch 'testing_del_branch'
+      agent.env_branches.include?('testing_del_branch').should == true
 
-        initial_checkout(puppetupdater,previous_rev)
-        checkout_again(puppetupdater,previous_rev)
+      del_branch 'testing_del_branch'
+      agent.update_bare_repo
+      agent.env_branches.include?('testing_del_branch').should == true
 
-        Dir.chdir("#{puppetupdater.dir}/environments/masterbranch") do
-          head_rev = `git rev-parse HEAD`.chomp
-          head_rev.should be == previous_rev
-          head_rev.size.should be == 40
-        end
-      }
-
-   }
+      agent.update_branch 'testing_del_branch'
+      agent.cleanup_old_branches
+      agent.env_branches.include?('testing_del_branch').should == false
+    end
   end
 
+  describe '#git_auth' do
+    it 'sets GIT_SSH env from config' do
+      agent.stubs(:config).with('ssh_key').returns('hello')
+      agent.git_auth { `echo $GIT_SSH`.should be }
+    end
+
+    it 'yields directly when config is empty' do
+      agent.git_auth { `echo $GIT_SSH` }.strip.should == ''
+    end
+  end
+
+  def clean
+    `rm -rf #{agent.dir}`
+  end
+
+  def clone_main
+    `git clone #{agent.repo_url} #{agent.dir}`
+  end
+
+  def clone_bare
+    `git clone --mirror #{agent.repo_url} #{agent.git_dir}`
+  end
+
+  def new_branch(name)
+    tmp_dir = Dir.mktmpdir
+    system <<-SHELL
+      git clone #{agent.repo_url} #{tmp_dir} >/dev/null 2>&1;
+      cd #{tmp_dir};
+      git checkout -b #{name} >/dev/null 2>&1;
+      git push origin #{name} >/dev/null 2>&1
+    SHELL
+  end
+
+  def del_branch(name)
+    tmp_dir = Dir.mktmpdir
+    system <<-SHELL
+      git clone #{agent.repo_url} #{tmp_dir} >/dev/null 2>&1;
+      cd #{tmp_dir};
+      git push origin :#{name} >/dev/null 2>&1
+    SHELL
+  end
 end

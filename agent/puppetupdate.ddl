@@ -5,7 +5,8 @@ metadata :name        => "Puppet Update",
          :version     => "1.0",
          :url         => "http://www.timgroup.com",
          :timeout     => 120
-action "update_default", :description => "Update the default branch to a specific hash" do
+
+action "update", :description => "Update the branch to a specific revision" do
   display :always
 
   input :revision,
@@ -14,17 +15,54 @@ action "update_default", :description => "Update the default branch to a specifi
     :optional    => true,
     :type        => :string,
     :prompt      => "Git hash",
-    :validation  => ".+", 
+    :validation  => ".*",
     :maxlength   => 40
 
-  output :status,
-    :description => "The status of the git pull",
-    :display_as  => "Pull Status"
-end
-action "update", :description => "Update all branches on the puppetmaster" do
-  display :always
+  input :branch,
+    :description => "branch",
+    :display_as  => "the branch to check out into environments",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Git branch",
+    :validation  => ".+",
+    :maxlength   => 255
+
+  input :cleanup,
+    :description => "cleanup old branches",
+    :display_as  => "cleanup old branches after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Cleanup (yes/no)",
+    :validation  => ".+",
+    :maxlength   => 3
+
+  output :from,
+    :description => "The sha we updated from",
+    :display_as  => "From"
+
+  output :to,
+    :description => "The sha we updated to",
+    :display_as  => "To"
 
   output :status,
     :description => "The status of the git pull",
     :display_as  => "Pull Status"
 end
+
+action "update_all", :description => "Update all branches on the puppetmaster" do
+  display :always
+
+  input :cleanup,
+    :description => "cleanup old branches",
+    :display_as  => "cleanup old branches after updating",
+    :optional    => true,
+    :type        => :string,
+    :prompt      => "Cleanup (yes/no)",
+    :validation  => ".+",
+    :maxlength   => 3
+
+  output :status,
+    :description => "The status of the git pull",
+    :display_as  => "Pull Status"
+end
+

@@ -2,188 +2,204 @@ require 'fileutils'
 
 module MCollective
   module Agent
-    class Puppetupdate<RPC::Agent
-      attr_accessor :dir
-      attr_accessor :repo_url
-
-      def initialize
-        @debug=true
-        @dir="/etc/puppet"
-        @git_repo="puppet.git"
-        @repo_url="http://git/git/puppet"
-        super
+    class Puppetupdate < RPC::Agent
+      action "update_all" do
+        load_puppet
+        begin
+          update_all_branches
+          reply[:output] = "Done"
+        rescue Exception => e
+          reply.fail! "Exception: #{e}"
+        end
       end
 
       action "update" do
-        begin
-          require 'puppet'
-        rescue LoadError => e
-          reply.fail! "Cannot load Puppet"
-        end
-
-        begin
-          update_all_branches()
-          update_master_checkout()
-          reply[:output] = "Done"
-        rescue Exception => e
-          reply.fail! "Exception: #{e}"
-        end
-      end
-
-      action "update_default" do
         validate :revision, String
         validate :revision, :shellsafe
+        validate :branch, String
+        validate :branch, :shellsafe
+        load_puppet
 
         begin
-          require 'puppet'
-        rescue LoadError => e
-          reply.fail! "Cannot load Puppet"
-        end
-
-        begin
-          revision = request[:revision]
-          update_bare_repo()
-          update_branch("default",revision)
-          reply[:output] = "Done"
+          ret = update_single_branch(request[:branch], request[:revision])
+          if ret
+            reply[:status] = "Done"
+            [:from, :to].each { |s| reply[s] = ret[s] }
+          else
+            reply[:status] = "Deleted"
+          end
         rescue Exception => e
           reply.fail! "Exception: #{e}"
         end
       end
 
-      def update_master_checkout
-        Dir.chdir(@dir) do
-          debug "chdir #{@dir} for update_master_checkout"
-          exec "git fetch origin"
-          exec "git reset --hard origin/master"
+      attr_accessor :dir, :repo_url, :ignore_branches, :run_after_checkout, :remove_branches
+
+      def initialize
+        @dir                = config('directory', '/etc/puppet')
+        @repo_url           = config('repository', 'http://git/puppet')
+        @ignore_branches    = config('ignore_branches', '').split(',').map { |i| regexy_string(i) }
+        @remove_branches    = config('remove_branches', '').split(',').map { |r| regexy_string(r) }
+        @run_after_checkout = config('run_after_checkout', nil)
+        super
+      end
+
+      def git_dir; config('clone_at', "#{@dir}/puppet.git"); end
+      def env_dir; "#{@dir}/environments"; end
+
+      def load_puppet
+        require 'puppet'
+      rescue LoadError => e
+        reply.fail! "Cannot load Puppet"
+      end
+
+      def update_single_branch(branch, revision='')
+        whilst_locked do
+          update_bare_repo
+          ret = update_branch(branch, revision)
+          write_puppet_conf
+          cleanup_old_branches
+          ret
+        end
+       end
+
+      def strip_ignored_branches(branch_list)
+        branch_list.reject do |branch|
+          branch == '(no branch)' or
+          ignore_branches.select { |b| b.match(branch) }.count > 0
         end
       end
 
-      def update_all_branches(revisions={})
-        update_bare_repo()
-        branches = branches()
-        branches.each {
-          |branch|
+      def git_branches
+        strip_ignored_branches %x[cd #{git_dir} && git branch -a].lines.
+          map {|l| l.gsub(/\*/, '').strip}
+      end
 
-          debug "WORKING FOR BRANCH #{branch}"
-          debug "#{revisions[branch]}"
-          if(revisions[branch]==nil)
-            update_branch(branch)
+      def env_branches
+        strip_ignored_branches %x[ls -1 #{env_dir}].lines.map(&:strip)
+      end
+
+      def update_all_branches
+        whilst_locked do
+          update_bare_repo
+          git_branches.each {|branch| update_branch(branch) }
+          write_puppet_conf
+          cleanup_old_branches
+        end
+      end
+
+      def cleanup_old_branches(config=nil)
+        return if config && config !~ /yes|1|true/
+
+        keep = git_branches.map{|b| branch_dir(b)}
+        (env_branches - keep).each do |branch|
+          run "rm -rf #{env_dir}/#{branch}"
+        end
+      end
+
+      def write_puppet_conf
+        return unless config('rewrite_config', true)
+        return if config('rewrite_config', true) =~ /^(0|no|false)$/
+
+        File.open("#{@dir}/puppet.conf", "w") do |f|
+          f.puts File.read("#{@dir}/puppet.conf.base")
+
+          git_branches.each do |branch|
+            local = branch_dir(branch)
+            f.puts "[#{local}]"
+            f.puts "modulepath=$confdir/environments/#{local}/modules"
+            f.puts "manifest=$confdir/environments/#{local}/manifests/site.pp"
+          end
+        end
+      end
+
+      def update_branch(branch, revision='')
+        return unless git_branches.include? branch
+
+        branch_path = "#{env_dir}/#{branch_dir(branch)}/"
+        Dir.mkdir(env_dir) unless File.exist?(env_dir)
+        Dir.mkdir(branch_path) unless File.exist?(branch_path)
+
+        ret = git_reset(revision.length > 0 ? revision : branch, branch_path)
+        if run_after_checkout
+          Dir.chdir(branch_path) { ret[:after_checkout] = system run_after_checkout }
+        end
+        ret
+      end
+
+      def git_reset(revision, work_tree)
+        from = File.exists?("#{work_tree}/.git_revision") ? run("cat #{work_tree}/.git_revision").chomp : 'unknown'
+        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} checkout --detach --force #{revision}"
+        run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
+        to = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
+        File.open("#{work_tree}/.git_revision", 'w') { |f| f.puts to }
+        { :from => from, :to => to }
+      end
+
+      def branch_dir(branch)
+        branch = branch.gsub /\//, '__'
+        branch = branch.gsub /-/, '_'
+        %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
+      end
+
+      def update_bare_repo
+        git_auth do
+          if File.exists?(git_dir)
+            run "(cd #{git_dir}; git fetch origin; git remote prune origin)"
           else
-            update_branch(branch, revisions[branch])
+            run "git clone --mirror #{@repo_url} #{git_dir}"
           end
-        }
-        write_puppet_conf(branches)
-        cleanup_old_branches(branches)
+        end
       end
 
-      def cleanup_old_branches(branches)
-        local_branches = ["default"]
-        branches.each { |branch| local_branches << local_branch_name(branch) }
-        all_envs = all_env_branches()
-        all_envs.each { |branch|
-          if ! local_branches.include?(branch)
-            debug "Cleanup old branch named #{branch}"
-            exec "rm -rf #{@dir}/environments/#{branch}"
-          end
-        }
-      end
-
-      def write_puppet_conf(branches)
-        branches << "default"
-        FileUtils.cp "#{@dir}/puppet.conf.base", "#{@dir}/puppet.conf"
-        branches.each {
-          |branch|
-          open("#{@dir}/puppet.conf", "a") {|f|
-            f.puts "\n[#{local_branch_name(branch)}]\n"
-            f.puts "modulepath=$confdir/environments/#{local_branch_name(branch)}/modules\n"
-            f.puts "manifest=$confdir/environments/#{local_branch_name(branch)}/manifests/site.pp\n"
-          }
-        }
-      end
-
-      def branches()
-        branches=[]
-        Dir.chdir("#{@dir}/#{@git_repo}") do
-          %x[git branch -a].each_line do |line|
-            line.strip!
-            if line !~ /\//
-              branches<<line
+      def git_auth
+        if ssh_key = config('ssh_key')
+          Dir.mktmpdir do |dir|
+            wrapper_file = "#{dir}/ssh_wrapper.sh"
+            File.open(wrapper_file, 'w') do |f|
+              f.print "#!/bin/sh\n"
+              f.print "exec /usr/bin/ssh -o StrictHostKeyChecking=no -i #{ssh_key} \"$@\"\n"
             end
-          end
-        end
-        return branches
-      end
-
-      def all_env_branches()
-        branches=[]
-        Dir.chdir("#{@dir}/environments") do
-          %x[ls -1].each_line do |line|
-            line.strip!
-            branches<<line
-          end
-        end
-        return branches
-      end
-
-      def update_branch(remote_branch_name, revision="origin/#{remote_branch_name(remote_branch_name)}")
-        local_branch_name = local_branch_name(remote_branch_name)
-        dir="#{@dir}/environments/#{local_branch_name}/"
-        if !File.exist?(dir)
-          exec  "git clone -b #{remote_branch_name(remote_branch_name)} '#{@dir}/#{@git_repo}' #{dir}"
-        end
-
-        Dir.chdir(dir) do
-          debug "chdir #{dir}\n"
-          exec "git fetch origin"
-          exec "git reset --hard #{revision}"
-        end
-      end
-
-      def remote_branch_name(remote_branch_name)
-        if /\* (.+)/.match(remote_branch_name)
-          return $1
-        end
-        return remote_branch_name
-      end
-
-      def local_branch_name(remote_branch_name)
-        if /(\/|\* )(.+)/.match(remote_branch_name)
-          remote_branch_name = $2
-        end
-        if remote_branch_name == 'master'
-          return "masterbranch"
-        end
-        return remote_branch_name
-      end
-
-      def update_bare_repo()
-        envDir="#{@dir}/#{@git_repo}"
-        if File.exists?(envDir)
-          Dir.chdir("#{@dir}/#{@git_repo}") do
-            debug "chdir #{@dir}/#{@git_repo}"
-            exec("git fetch origin")
-            exec("git remote prune origin")
+            File.chmod(0700, wrapper_file)
+            ENV['GIT_SSH'] = wrapper_file
+            yield
+            ENV.delete 'GIT_SSH'
           end
         else
-          exec "git clone --mirror #{@repo_url} #{@dir}/#{@git_repo}"
-        end
-        debug "done update_bare_repo"
-      end
-
-      def debug line
-        if true == @debug
-          logger.info(line)
+          yield
         end
       end
 
-      def exec cmd
-        debug "Running cmd #{cmd}"
+      def run(cmd)
         output=`#{cmd} 2>&1`
-        if not $?.success?
-          raise "#{cmd} failed with: #{output}"
+        raise "#{cmd} failed with: #{output}" unless $?.success?
+        output
+      end
+
+    private
+
+      def config(key, default=nil)
+        Config.instance.pluginconf.fetch("puppetupdate.#{key}", default)
+      rescue
+        default
+      end
+
+      def whilst_locked
+        ret = nil
+        File.open('/tmp/puppetupdate.lock', File::RDWR|File::CREAT, 0644) do |lock|
+          lock.flock(File::LOCK_EX)
+          ret = yield
+        end
+        ret
+      end
+
+      def regexy_string(string)
+        if string.match("^/")
+          Regexp.new(string.gsub("\/", ""))
+        else
+          Regexp.new("^#{string}$")
         end
       end
     end
   end
 end
-
