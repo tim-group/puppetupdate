@@ -32,7 +32,7 @@ valid git branch names, are not valid puppet environment names.
 
 Notably, the following characters get translated:
 
-  * - becomes _
+  * \- becomes _
 
   * / becomes __
 
@@ -68,13 +68,13 @@ rewritten inside this directory.
 
 The repository location from which to clone the puppet code.
 
-Defaults to __http://git/git/puppet__
+Defaults to __http://git/puppet__
 
-You almost certainaly want to change this!
+You almost certainly want to change this!
 
 ## ignore_branches
 
-A comma seperated list of branches to not bother checking out (but not
+A comma separated list of branches to not bother checking out (but not
 remove if found).
 
 Defaults to empty.
@@ -94,14 +94,14 @@ will ignore the 'production' branch, and also any branch prefixed with 'foobar'
 
 ## remove_branches
 
-A comma seperated list of branches to never checkout, and remove if found
+A comma separated list of branches to never checkout, and remove if found
 checked out.
 
 Value behaves in the same manor as ignore_branches
 
 ## run_after_checkout
 
-If set, after checking out / updating a branch then puppetupate
+If set, after checking out / updating a branch then puppetupdate
 will chdir into the top level /etc/puppet/environments/xxx
 directory your branch has just been checked out into, and run the
 command configured here.
