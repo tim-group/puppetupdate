@@ -114,21 +114,6 @@ describe MCollective::Agent::Puppetupdate do
     File.exist?("#{agent.env_dir}/masterbranch/puppet.conf.base").should == false
   end
 
-  describe '#write_puppet_conf' do
-    it 'writes puppet.conf when config is true' do
-      agent.expects(:config).with('rewrite_config', true).returns('true')
-      agent.expects(:config).with('rewrite_config', true).returns('true')
-      File.expects(:open)
-      agent.write_puppet_conf
-    end
-
-    it 'does not write config otherwise' do
-      agent.expects(:config).with('rewrite_config', true).returns(false)
-      File.expects(:open).never
-      agent.write_puppet_conf
-    end
-  end
-
   describe '#cleanup_old_branches' do
     it 'cleans up by default' do
       agent.expects(:run)

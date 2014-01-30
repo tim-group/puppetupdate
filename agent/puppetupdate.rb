@@ -57,7 +57,6 @@ module MCollective
         whilst_locked do
           update_bare_repo
           ret = update_branch(branch, revision)
-          write_puppet_conf
           cleanup_old_branches
           ret
         end
@@ -83,7 +82,6 @@ module MCollective
         whilst_locked do
           update_bare_repo
           git_branches.each {|branch| update_branch(branch) }
-          write_puppet_conf
           cleanup_old_branches
         end
       end
@@ -94,22 +92,6 @@ module MCollective
         keep = git_branches.map{|b| branch_dir(b)}
         (env_branches - keep).each do |branch|
           run "rm -rf #{env_dir}/#{branch}"
-        end
-      end
-
-      def write_puppet_conf
-        return unless config('rewrite_config', true)
-        return if config('rewrite_config', true) =~ /^(0|no|false)$/
-
-        File.open("#{@dir}/puppet.conf", "w") do |f|
-          f.puts File.read("#{@dir}/puppet.conf.base")
-
-          git_branches.each do |branch|
-            local = branch_dir(branch)
-            f.puts "[#{local}]"
-            f.puts "modulepath=$confdir/environments/#{local}/modules"
-            f.puts "manifest=$confdir/environments/#{local}/manifests/site.pp"
-          end
         end
       end
 
