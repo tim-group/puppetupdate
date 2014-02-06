@@ -33,6 +33,10 @@ module MCollective
         end
       end
 
+      action "git_gc" do
+        git_gc
+      end
+
       attr_accessor :dir, :repo_url, :ignore_branches, :run_after_checkout, :remove_branches
 
       def initialize
@@ -132,6 +136,10 @@ module MCollective
             run "git clone --mirror #{@repo_url} #{git_dir}"
           end
         end
+      end
+
+      def git_gc
+        run "git --git-dir=#{git_dir} gc --auto --prune"
       end
 
       def git_auth

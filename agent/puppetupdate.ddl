@@ -66,3 +66,6 @@ action "update_all", :description => "Update all branches on the puppetmaster" d
     :display_as  => "Pull Status"
 end
 
+action "git_gc", :description => "Trigger git garbage collection" do
+  display :failed
+end
