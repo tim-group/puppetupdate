@@ -60,7 +60,7 @@ module MCollective
           cleanup_old_branches
           ret
         end
-       end
+      end
 
       def strip_ignored_branches(branch_list)
         branch_list.reject do |branch|
