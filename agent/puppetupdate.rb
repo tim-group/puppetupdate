@@ -4,7 +4,6 @@ module MCollective
   module Agent
     class Puppetupdate < RPC::Agent
       action "update_all" do
-        load_puppet
         begin
           update_all_branches
           reply[:output] = "Done"
@@ -18,7 +17,6 @@ module MCollective
         validate :revision, :shellsafe
         validate :branch, String
         validate :branch, :shellsafe
-        load_puppet
 
         begin
           ret = update_single_branch(request[:branch], request[:revision])
@@ -50,12 +48,6 @@ module MCollective
 
       def git_dir; config('clone_at', "#{@dir}/puppet.git"); end
       def env_dir; "#{@dir}/environments"; end
-
-      def load_puppet
-        require 'puppet'
-      rescue LoadError => e
-        reply.fail! "Cannot load Puppet"
-      end
 
       def update_single_branch(branch, revision='')
         whilst_locked do
