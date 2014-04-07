@@ -32,7 +32,7 @@ valid git branch names, are not valid puppet environment names.
 
 Notably, the following characters get translated:
 
-  * - becomes _
+  * \- becomes _
 
   * / becomes __
 
@@ -40,15 +40,6 @@ Notably, the following characters get translated:
 
 The following configuration options are recognised in the mcollective
 __server.cfg__, under the namespace __plugin.puppetupdate.xxx__
-
-## rewrite_config
-
-If the agent should rewrite your puppet.conf file on deploying branches.
-
-Unless you have a specific need for a not 1:1 mapping of branches
-to environments, then it is recommended to set this to false.
-
-Defaults to true (due to hysterical raisins)
 
 ## ssh_key
 
@@ -61,20 +52,18 @@ Where you keep your puppet code, defaults to __/etc/puppet__
 
 Environments are _always_ under this directory, as is the
 checkout of your puppet code (in a directory named puppet.git)
-and if __rewrite_config__ is true, then puppet.conf is
-rewritten inside this directory.
 
 ## repository
 
 The repository location from which to clone the puppet code.
 
-Defaults to __http://git/git/puppet__
+Defaults to __http://git/puppet__
 
-You almost certainaly want to change this!
+You almost certainly want to change this!
 
 ## ignore_branches
 
-A comma seperated list of branches to not bother checking out (but not
+A comma separated list of branches to not bother checking out (but not
 remove if found).
 
 Defaults to empty.
@@ -94,14 +83,14 @@ will ignore the 'production' branch, and also any branch prefixed with 'foobar'
 
 ## remove_branches
 
-A comma seperated list of branches to never checkout, and remove if found
+A comma separated list of branches to never checkout, and remove if found
 checked out.
 
 Value behaves in the same manor as ignore_branches
 
 ## run_after_checkout
 
-If set, after checking out / updating a branch then puppetupate
+If set, after checking out / updating a branch then puppetupdate
 will chdir into the top level /etc/puppet/environments/xxx
 directory your branch has just been checked out into, and run the
 command configured here.
@@ -118,25 +107,9 @@ Checkout, then just run:
 You'll get a .deb or .rpm of the code for this agent, which you
 can install on your puppet masters.
 
-## dynamic environments mode
-
-This is the recommended (but not default) deployment mode.
-
-Set the config option __rewrite_config__ to be false.
-
 Arrange your puppet.conf on your puppetmaster to include the
 __$environment__ variable, in the __modulepath__ and __manifest__
 settings.
-
-## static environments mode.
-
-Set the config option __rewrite_config__ to be true
-
-Arrange for your normal __puppet.conf__ to be named __/etc/puppet/puppet.conf.base__
-on your puppet masters
-
-The puppetupdate agent will then write the __puppet.conf__
-file out with an entry for each environment.
 
 # LICENSE
 
