@@ -85,7 +85,9 @@ module MCollective
       def cleanup_old_branches(config=nil)
         return if config && config !~ /yes|1|true/
 
-        keep = git_branches.map{|b| branch_dir(b)}
+        keep = git_branches.reject do |branch|
+          remove_branches.select { |b| b.match(branch) }.count > 0
+        end.map{|b| branch_dir(b)}
         (env_branches - keep).each do |branch|
           run "rm -rf #{env_dir}/#{branch}"
         end

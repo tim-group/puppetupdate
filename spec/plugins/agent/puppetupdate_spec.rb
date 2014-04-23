@@ -39,7 +39,11 @@ describe MCollective::Agent::Puppetupdate do
         git push origin master 2>&1
         git checkout -b branch1 2>&1
         git push origin branch1 2>&1
-        git checkout -b must_be_hidden 2>&1 ) >/dev/null
+        git checkout -b must_be_hidden 2>&1
+        echo 'hi' > file3
+        git add file3
+        git commit -am"must_be_hidden";
+        git push origin must_be_hidden) >/dev/null
     SHELL
 
     agent.dir      = Dir.mktmpdir
