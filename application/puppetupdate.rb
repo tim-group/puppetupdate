@@ -10,7 +10,7 @@ class MCollective::Application::Puppetupdate < MCollective::Application
         exit 1
       end
       configuration[:branch]   = ARGV.shift
-      if configuration[:command] == 'update' and configuration[:branch].nil?
+      if configuration[:command] == 'update' && configuration[:branch].nil?
         STDERR.puts "Don't understand update without a branch name"
         exit 1
       end
@@ -22,15 +22,14 @@ class MCollective::Application::Puppetupdate < MCollective::Application
   end
 
   def main
-    return unless %w{update_all update}.include? configuration[:command]
+    return unless %w(update_all update).include? configuration[:command]
 
     mc = rpcclient("puppetupdate", :options => options)
     printrpc(
       mc.send(configuration[:command],
-        :revision => configuration[:revision],
-        :branch   => configuration[:branch]))
+              :revision => configuration[:revision],
+              :branch   => configuration[:branch]))
     mc.disconnect
     printrpcstats
   end
 end
-

@@ -18,10 +18,11 @@ require 'spec_helper'
 require 'agent/puppetupdate'
 
 describe MCollective::Agent::Puppetupdate do
-  let(:agent) {
+  let(:agent) do
     MCollective::Test::LocalAgentTest.new("puppetupdate",
-      :agent_file => "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb").
-    plugin }
+                                          :agent_file => "#{File.dirname(__FILE__)}/../../../agent/puppetupdate.rb").
+      plugin
+  end
 
   before(:all) do
     repo_dir = Dir.mktmpdir
@@ -58,7 +59,7 @@ describe MCollective::Agent::Puppetupdate do
   end
 
   it "#strip_ignored_branches works" do
-    agent.strip_ignored_branches(['foo', 'bar', 'leave_me_alone']).should == ['foo', 'bar']
+    agent.strip_ignored_branches(%w(foo bar leave_me_alone)).should == %w(foo bar)
   end
 
   it "#git_dir should depend on config" do
@@ -126,7 +127,7 @@ describe MCollective::Agent::Puppetupdate do
     end
 
     it 'cleans up with yes/1/true' do
-      %w{yes 1 true}.each do |value|
+      %w(yes 1 true).each do |value|
         agent.expects(:run)
         `mkdir -p #{agent.env_dir}/hahah`
         agent.cleanup_old_branches(value)

@@ -10,4 +10,3 @@ if branch = ARGV.first
 else
   MCollective::Agent::Puppetupdate.new.update_all_branches
 end
-

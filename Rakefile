@@ -13,4 +13,4 @@ task :lint do
      "--format RuboCop::Formatter::CheckstyleFormatter --out tmp/checkstyle.xml"
 end
 
-task :default => ['spec', 'lint']
+task :default => %w(spec lint)

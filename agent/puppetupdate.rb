@@ -46,10 +46,15 @@ module MCollective
         super
       end
 
-      def git_dir; config('clone_at', "#{@dir}/puppet.git"); end
-      def env_dir; "#{@dir}/environments"; end
+      def git_dir
+        config('clone_at', "#{@dir}/puppet.git")
+      end
 
-      def update_single_branch(branch, revision='')
+      def env_dir
+        "#{@dir}/environments"
+      end
+
+      def update_single_branch(branch, revision = '')
         whilst_locked do
           update_bare_repo
           ret = update_branch(branch, revision)
@@ -60,40 +65,40 @@ module MCollective
 
       def strip_ignored_branches(branch_list)
         branch_list.reject do |branch|
-          branch == '(no branch)' or
-          ignore_branches.select { |b| b.match(branch) }.count > 0
+          branch == '(no branch)' ||
+            ignore_branches.select { |b| b.match(branch) }.count > 0
         end
       end
 
       def git_branches
-        strip_ignored_branches %x[cd #{git_dir} && git branch -a].lines.
-          map {|l| l.gsub(/\*/, '').strip}
+        strip_ignored_branches `cd #{git_dir} && git branch -a`.lines.
+          map { |l| l.gsub(/\*/, '').strip }
       end
 
       def env_branches
-        strip_ignored_branches %x[ls -1 #{env_dir}].lines.map(&:strip)
+        strip_ignored_branches `ls -1 #{env_dir}`.lines.map(&:strip)
       end
 
       def update_all_branches
         whilst_locked do
           update_bare_repo
-          git_branches.each {|branch| update_branch(branch) }
+          git_branches.each { |branch| update_branch(branch) }
           cleanup_old_branches
         end
       end
 
-      def cleanup_old_branches(config=nil)
+      def cleanup_old_branches(config = nil)
         return if config && config !~ /yes|1|true/
 
         keep = git_branches.reject do |branch|
           remove_branches.select { |b| b.match(branch) }.count > 0
-        end.map{|b| branch_dir(b)}
+        end.map { |b| branch_dir(b) }
         (env_branches - keep).each do |branch|
           run "rm -rf #{env_dir}/#{branch}"
         end
       end
 
-      def update_branch(branch, revision='')
+      def update_branch(branch, revision = '')
         return unless git_branches.include? branch
 
         branch_path = "#{env_dir}/#{branch_dir(branch)}/"
@@ -108,7 +113,7 @@ module MCollective
       end
 
       def git_reset(revision, work_tree)
-        from = File.exists?("#{work_tree}/.git_revision") ? run("cat #{work_tree}/.git_revision").chomp : 'unknown'
+        from = File.exist?("#{work_tree}/.git_revision") ? run("cat #{work_tree}/.git_revision").chomp : 'unknown'
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} checkout --detach --force #{revision}"
         run "git --git-dir=#{git_dir} --work-tree=#{work_tree} clean -dxf"
         to = run "git --git-dir=#{git_dir} --work-tree=#{work_tree} rev-parse HEAD"
@@ -119,12 +124,12 @@ module MCollective
       def branch_dir(branch)
         branch = branch.gsub /\//, '__'
         branch = branch.gsub /-/, '_'
-        %w{master user agent main}.include?(branch) ? "#{branch}branch" : branch
+        %w(master user agent main).include?(branch) ? "#{branch}branch" : branch
       end
 
       def update_bare_repo
         git_auth do
-          if File.exists?(git_dir)
+          if File.exist?(git_dir)
             run "(cd #{git_dir}; git fetch origin; git remote prune origin)"
           else
             run "git clone --mirror #{@repo_url} #{git_dir}"
@@ -155,14 +160,14 @@ module MCollective
       end
 
       def run(cmd)
-        output=`#{cmd} 2>&1`
-        raise "#{cmd} failed with: #{output}" unless $?.success?
+        output = `#{cmd} 2>&1`
+        fail "#{cmd} failed with: #{output}" unless $?.success?
         output
       end
 
-    private
+      private
 
-      def config(key, default=nil)
+      def config(key, default = nil)
         Config.instance.pluginconf.fetch("puppetupdate.#{key}", default)
       rescue
         default
@@ -170,7 +175,7 @@ module MCollective
 
       def whilst_locked
         ret = nil
-        File.open('/tmp/puppetupdate.lock', File::RDWR|File::CREAT, 0644) do |lock|
+        File.open('/tmp/puppetupdate.lock', File::RDWR | File::CREAT, 0644) do |lock|
           lock.flock(File::LOCK_EX)
           ret = yield
         end

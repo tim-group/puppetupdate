@@ -16,4 +16,3 @@ RSpec.configure do |config|
     MCollective::PluginManager.clear
   end
 end
-
