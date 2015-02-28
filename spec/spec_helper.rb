@@ -8,7 +8,9 @@ require 'mocha'
 require 'tempfile'
 
 module MCollective::Test::Util::Validator
-  def self.validate; false; end
+  def self.validate
+    false
+  end
 end
 
 RSpec.configure do |config|
