@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby -S rspec
 $: << '.'
 require 'singleton'
+require 'mcollective'
 require 'mcollective/logger'
 require 'mcollective/log'
 require 'mcollective/config'
