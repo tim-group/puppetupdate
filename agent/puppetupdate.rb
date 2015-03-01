@@ -85,7 +85,7 @@ module MCollective
           update_bare_repo
           git_branches.reject do |branch|
             remove_branches.select { |b| b.match(branch) }.count > 0
-          end.each {|branch| update_branch(branch) }
+          end.each { |branch| update_branch(branch) }
           cleanup_old_branches
         end
       end
