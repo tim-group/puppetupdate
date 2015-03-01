@@ -83,7 +83,9 @@ module MCollective
       def update_all_branches
         whilst_locked do
           update_bare_repo
-          git_branches.each { |branch| update_branch(branch) }
+          git_branches.reject do |branch|
+            remove_branches.select { |b| b.match(branch) }.count > 0
+          end.each {|branch| update_branch(branch) }
           cleanup_old_branches
         end
       end
