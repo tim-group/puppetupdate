@@ -70,9 +70,9 @@ describe MCollective::Agent::Puppetupdate do
   it "#branch_dir is not using reserved branch" do
     agent.branch_dir('foobar').should == 'foobar'
     agent.branch_dir('master').should == 'masterbranch'
-    agent.branch_dir('user').should   == 'userbranch'
-    agent.branch_dir('agent').should  == 'agentbranch'
-    agent.branch_dir('main').should   == 'mainbranch'
+    agent.branch_dir('user').should == 'userbranch'
+    agent.branch_dir('agent').should == 'agentbranch'
+    agent.branch_dir('main').should == 'mainbranch'
   end
 
   describe "#update_bare_repo" do
