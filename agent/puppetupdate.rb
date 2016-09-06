@@ -67,7 +67,7 @@ module MCollective
         branch_list.reject do |branch|
           branch == '(no branch)' ||
             branch =~ /detached from/ ||
-            ignore_branches.select { |b| b.match(branch) }.count > 0
+            ignore_branches.count { |b| b.match(branch) } > 0
         end
       end
 
@@ -84,7 +84,7 @@ module MCollective
         whilst_locked do
           update_bare_repo
           git_branches.reject do |branch|
-            remove_branches.select { |b| b.match(branch) }.count > 0
+            remove_branches.count { |b| b.match(branch) } > 0
           end.each { |branch| update_branch(branch) }
           cleanup_old_branches
         end
@@ -94,7 +94,7 @@ module MCollective
         return if config && config !~ /yes|1|true/
 
         keep = git_branches.reject do |branch|
-          remove_branches.select { |b| b.match(branch) }.count > 0
+          remove_branches.count { |b| b.match(branch) } > 0
         end.map { |b| branch_dir(b) }
         (env_branches - keep).each do |branch|
           run "rm -rf '#{env_dir}/#{branch}'"
