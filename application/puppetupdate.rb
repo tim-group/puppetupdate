@@ -1,6 +1,6 @@
 class MCollective::Application::Puppetupdate < MCollective::Application
   description "Puppet repository updates Client"
-  usage "Usage: mco puppetupdate update_all -T oyldn or mco puppetupdate [update <branch> [<sha1>]]"
+  usage "mco puppetupdate update_all -T oyldn or mco puppetupdate [update <branch> [<sha1>]]"
 
   def post_option_parser(configuration)
     if ARGV.length >= 1
